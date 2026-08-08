@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FaceAttend — Employee Attendance</title>
+<style>
+  :root{
+    --bg:#0b0f16; --panel:#131a25; --panel2:#182131; --line:#243044;
+    --txt:#e6ecf5; --muted:#8b9ab0; --accent:#3b82f6; --accent2:#1d4ed8;
+    --ok:#10b981; --warn:#f59e0b; --bad:#ef4444; --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg);color:var(--txt);min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit;cursor:pointer;border:none}
+  input,select{font-family:inherit}
+
+  /* ---------- shell ---------- */
+  header{
+    display:flex;align-items:center;gap:18px;padding:14px 22px;
+    background:var(--panel);border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:50;flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.3px}
+  .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#8b5cf6);
+    display:grid;place-items:center;font-size:15px}
+  nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+  nav button{
+    background:transparent;color:var(--muted);padding:8px 15px;border-radius:9px;
+    font-size:13.5px;font-weight:600;transition:.15s;
+  }
+  nav button:hover{background:var(--panel2);color:var(--txt)}
+  nav button.active{background:var(--accent);color:#fff}
+  .pill{font-size:11px;padding:4px 9px;border-radius:20px;background:var(--panel2);
+    color:var(--muted);border:1px solid var(--line);font-weight:600}
+  .pill.live{color:var(--ok);border-color:#134e3a}
+  .pill.err{color:var(--bad);border-color:#4c1d1d}
+
+  main{padding:22px;max-width:1280px;margin:0 auto}
+  .view{display:none}
+  .view.active{display:block}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+  .card h2{font-size:15px;margin-bottom:4px;letter-spacing:-.2px}
+  .card .sub{font-size:12.5px;color:var(--muted);margin-bottom:16px;line-height:1.5}
+
+  /* ---------- kiosk ---------- */
+  .kiosk{display:grid;grid-template-columns:1.15fr .85fr;gap:20px;align-items:start}
+  @media(max-width:900px){.kiosk{grid-template-columns:1fr}}
+
+  .camwrap{position:relative;background:#000;border-radius:var(--radius);overflow:hidden;
+    border:1px solid var(--line);aspect-ratio:4/3}
+  .camwrap video,.camwrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .camwrap canvas{pointer-events:none}
+  .camwrap.mirrored video,.camwrap.mirrored canvas{transform:scaleX(-1)}
+  .camoff{position:absolute;inset:0;display:grid;place-items:center;text-align:center;
+    color:var(--muted);font-size:13px;padding:26px;line-height:1.6;background:#0d1219}
+
+  .clock{text-align:center;padding:22px 0 6px}
+  .clock .t{font-size:52px;font-weight:800;letter-spacing:-2px;font-variant-numeric:tabular-nums;line-height:1}
+  .clock .d{font-size:13.5px;color:var(--muted);margin-top:8px;font-weight:500}
+
+  .modeswitch{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
+  .modeswitch button{
+    padding:16px;border-radius:12px;background:var(--panel2);color:var(--muted);
+    font-size:14px;font-weight:700;border:2px solid var(--line);transition:.15s
+  }
+  .modeswitch button.on[data-mode="in"]{background:rgba(16,185,129,.14);border-color:var(--ok);color:var(--ok)}
+  .modeswitch button.on[data-mode="out"]{background:rgba(245,158,11,.14);border-color:var(--warn);color:var(--warn)}
+
+  .status{
+    border-radius:12px;padding:18px;text-align:center;background:var(--panel2);
+    border:1px solid var(--line);min-height:112px;display:flex;flex-direction:column;
+    justify-content:center;gap:6px;transition:.2s
+  }
+  .status .big{font-size:20px;font-weight:700;letter-spacing:-.4px}
+  .status .small{font-size:12.5px;color:var(--muted)}
+  .status.ok{background:rgba(16,185,129,.12);border-color:var(--ok)}
+  .status.warn{background:rgba(245,158,11,.12);border-color:var(--warn)}
+  .status.bad{background:rgba(239,68,68,.12);border-color:var(--bad)}
+
+  .btn{background:var(--accent);color:#fff;padding:11px 17px;border-radius:10px;
+    font-size:13.5px;font-weight:600;transition:.15s}
+  .btn:hover{background:var(--accent2)}
+  .btn.ghost{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+  .btn.ghost:hover{background:var(--line)}
+  .btn.danger{background:transparent;color:var(--bad);border:1px solid #4c1d1d;padding:6px 11px;font-size:12px}
+  .btn.danger:hover{background:rgba(239,68,68,.12)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.sm{padding:7px 12px;font-size:12.5px}
+
+  .feed{margin-top:20px}
+  .feedrow{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--panel);
+    border:1px solid var(--line);border-radius:11px;margin-bottom:8px}
+  .avatar{width:38px;height:38px;border-radius:10px;object-fit:cover;background:var(--panel2);flex-shrink:0}
+  .feedrow .nm{font-weight:600;font-size:13.5px}
+  .feedrow .mt{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .tag{margin-left:auto;font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;flex-shrink:0}
+  .tag.in{background:rgba(16,185,129,.16);color:var(--ok)}
+  .tag.out{background:rgba(245,158,11,.16);color:var(--warn)}
+
+  /* ---------- forms ---------- */
+  .field{margin-bottom:13px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:600}
+  .field input,.field select{
+    width:100%;padding:10px 12px;border-radius:9px;background:var(--panel2);
+    border:1px solid var(--line);color:var(--txt);font-size:13.5px;outline:none
+  }
+  .field input:focus,.field select:focus{border-color:var(--accent)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+  .samples{display:flex;gap:8px;margin:14px 0}
+  .slot{flex:1;aspect-ratio:1;border-radius:10px;background:var(--panel2);
+    border:2px dashed var(--line);display:grid;place-items:center;color:var(--muted);
+    font-size:11px;overflow:hidden;position:relative}
+  .slot img{width:100%;height:100%;object-fit:cover}
+  .samples.mirrored .slot img{transform:scaleX(-1)}
+  .slot.filled{border-style:solid;border-color:var(--ok)}
+
+  /* ---------- tables ---------- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 17px}
+  .stat .v{font-size:27px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+  .stat .k{font-size:11.5px;color:var(--muted);margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:11px 14px;background:var(--panel2);color:var(--muted);
+    font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;white-space:nowrap}
+  td{padding:11px 14px;border-top:1px solid var(--line);white-space:nowrap}
+  tbody tr:hover{background:var(--panel2)}
+  .empty{padding:44px;text-align:center;color:var(--muted);font-size:13px}
+  .chip{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+  .chip.ok{background:rgba(16,185,129,.16);color:var(--ok)}
+  .chip.late{background:rgba(245,158,11,.16);color:var(--warn)}
+  .chip.abs{background:rgba(239,68,68,.14);color:var(--bad)}
+  .chip.open{background:rgba(59,130,246,.16);color:#60a5fa}
+
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px}
+  .toolbar .field{margin:0}
+
+  .banner{padding:13px 16px;border-radius:11px;font-size:12.5px;line-height:1.6;margin-bottom:16px;
+    border:1px solid var(--line);background:var(--panel2)}
+  .banner.bad{background:rgba(239,68,68,.1);border-color:#4c1d1d;color:#fca5a5}
+  .banner.warn{background:rgba(245,158,11,.1);border-color:#4c3a1d;color:#fcd34d}
+  .banner code{background:rgba(0,0,0,.35);padding:2px 6px;border-radius:5px;font-size:11.5px}
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);
+    background:var(--panel);border:1px solid var(--line);padding:12px 20px;border-radius:11px;
+    font-size:13px;font-weight:600;transition:.25s;opacity:0;z-index:200;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  .toast.ok{border-color:var(--ok);color:var(--ok)}
+  .toast.bad{border-color:var(--bad);color:#fca5a5}
+
+  /* ---------- photo stamp / modal ---------- */
+  .thumb{width:38px;height:38px;border-radius:8px;object-fit:cover;cursor:pointer;
+    border:1px solid var(--line);background:var(--panel2);flex-shrink:0}
+  .thumb:hover{border-color:var(--accent)}
+  .modalbg{position:fixed;inset:0;background:rgba(4,7,12,.86);z-index:300;
+    display:none;place-items:center;padding:24px}
+  .modalbg.show{display:grid}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    max-width:640px;width:100%;max-height:92vh;overflow:auto;padding:18px}
+  .modal img{width:100%;border-radius:10px;display:block;background:#000}
+  .modal .mhead{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .modal .mhead h2{font-size:15px}
+  .kv{display:grid;grid-template-columns:112px 1fr;gap:6px 12px;font-size:12.5px;margin-top:14px}
+  .kv .k{color:var(--muted);font-weight:600}
+  .kv .v{word-break:break-word}
+  .geoline{font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.5}
+  .geoline b{color:var(--txt)}
+  .geodot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);margin-right:6px}
+  .geodot.ok{background:var(--ok)}
+  .geodot.bad{background:var(--bad)}
+  .geodot.wait{background:var(--warn)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}.row2{grid-template-columns:1fr}}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><div class="logo">◉</div> FaceAttend</div>
+  <span class="pill" id="engineStatus">engine: idle</span>
+  <nav>
+    <button data-view="kiosk" class="active">Kiosk</button>
+    <button data-view="enroll">Enroll</button>
+    <button data-view="dash">Dashboard</button>
+    <button data-view="settings">Settings</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ============ KIOSK ============ -->
+<section class="view active" id="view-kiosk">
+  <div id="envBanner"></div>
+  <div class="kiosk">
+    <div>
+      <div class="camwrap" id="camwrap">
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="overlay"></canvas>
+        <div class="camoff" id="camoff">
+          Camera is off.<br>Press <b>Start Camera</b> to begin.
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn" id="startCam">Start Camera</button>
+        <button class="btn ghost" id="stopCam" disabled>Stop</button>
+        <button class="btn ghost" id="flipCam" disabled title="Switch between front and back camera">↺ Switch camera</button>
+        <button class="btn ghost" id="manualBtn">Manual check-in</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="clock">
+          <div class="t" id="clockTime">--:--:--</div>
+          <div class="d" id="clockDate">—</div>
+        </div>
+        <div class="modeswitch">
+          <button data-mode="in" class="on">↓ CHECK IN</button>
+          <button data-mode="out">↑ CHECK OUT</button>
+        </div>
+        <div class="status" id="status">
+          <div class="big">Ready</div>
+          <div class="small">Start the camera and look at the lens</div>
+        </div>
+        <div class="geoline" id="geoLine"><span class="geodot"></span>Location: not requested</div>
+      </div>
+
+      <div class="feed">
+        <div style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;
+          letter-spacing:.5px;margin-bottom:10px">Today's activity</div>
+        <div id="feed"><div class="empty" style="padding:26px">No punches yet today.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ENROLL ============ -->
+<section class="view" id="view-enroll">
+  <div class="grid2">
+    <div class="card">
+      <h2>Enroll an employee</h2>
+      <p class="sub">Capture 3 face samples in slightly different poses and lighting. More variety = fewer failed matches later.</p>
+
+      <div class="camwrap" id="ecamwrap" style="aspect-ratio:4/3;margin-bottom:14px">
+        <video id="evideo" autoplay muted playsinline></video>
+        <div class="camoff" id="ecamoff">Camera off — press Start Camera</div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn ghost sm" id="eStartCam">Start Camera</button>
+        <button class="btn ghost sm" id="eFlipCam" disabled title="Switch between front and back camera">↺ Switch camera</button>
+        <button class="btn sm" id="eCapture" disabled>Capture sample</button>
+        <button class="btn ghost sm" id="eClear">Clear samples</button>
+      </div>
+
+      <div class="samples" id="samples">
+        <div class="slot" data-i="0">1</div>
+        <div class="slot" data-i="1">2</div>
+        <div class="slot" data-i="2">3</div>
+      </div>
+
+      <div class="row2">
+        <div class="field"><label>Full name *</label><input id="eName" placeholder="Priya Sharma"></div>
+        <div class="field"><label>Employee ID *</label><input id="eEmpId" placeholder="EMP-1042"></div>
+      </div>
+      <div class="field"><label>Department</label><input id="eDept" placeholder="Engineering"></div>
+
+      <button class="btn" id="eSave" style="width:100%;margin-top:6px">Save employee</button>
+      <p class="hint">Face templates are biometric data. Get written consent before enrolling anyone, and delete templates when someone leaves.</p>
+    </div>
+
+    <div class="card">
+      <h2>Enrolled employees</h2>
+      <p class="sub" id="empCount">0 employees</p>
+      <div id="empList"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DASHBOARD ============ -->
+<section class="view" id="view-dash">
+  <div class="stats" id="stats"></div>
+
+  <div class="toolbar">
+    <div class="field"><label>From</label><input type="date" id="dFrom"></div>
+    <div class="field"><label>To</label><input type="date" id="dTo"></div>
+    <div class="field"><label>Employee</label><select id="dEmp"><option value="">All</option></select></div>
+    <button class="btn ghost sm" id="dToday">Today</button>
+    <button class="btn ghost sm" id="dMonth">This month</button>
+    <button class="btn sm" id="dCsv" style="margin-left:auto">Export CSV</button>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>Date</th><th>Employee</th><th>ID</th><th>Dept</th>
+        <th>Check In</th><th>Check Out</th><th>Hours</th><th>Status</th><th>Method</th>
+      </tr></thead>
+      <tbody id="dayRows"></tbody>
+    </table>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <h2>Raw punch log</h2>
+    <p class="sub">Every individual event, newest first. Use this to spot double-punches or bad reads.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Photo</th><th>Timestamp</th><th>Employee</th><th>Type</th><th>Location</th><th>Method</th><th>Dist</th><th></th></tr></thead>
+        <tbody id="rawRows"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SETTINGS ============ -->
+<section class="view" id="view-settings">
+  <div class="grid2">
+    <div class="card">
+      <h2>Recognition</h2>
+      <p class="sub">Lower threshold = stricter matching (more "unknown", fewer false matches). 0.50 is a sane default.</p>
+      <div class="field">
+        <label>Match threshold — <span id="thrVal">0.50</span></label>
+        <input type="range" id="sThreshold" min="0.30" max="0.75" step="0.01">
+      </div>
+      <div class="row2">
+        <div class="field"><label>Punch cooldown (seconds)</label><input type="number" id="sCooldown" min="5" max="3600"></div>
+        <div class="field"><label>Hold-to-confirm (ms)</label><input type="number" id="sHold" min="0" max="5000" step="100"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Work start (late after)</label><input type="time" id="sStart"></div>
+        <div class="field"><label>Full day (hours)</label><input type="number" id="sFullDay" min="1" max="24" step="0.5"></div>
+      </div>
+      <div class="field">
+        <label>Model files URL (leave blank to use public CDNs)</label>
+        <input id="sModelUrl" placeholder="/weights">
+        <p class="hint">If your office network blocks CDNs, download the face-api.js <code>weights</code> folder onto your own server and put its URL here. This also makes the kiosk work fully offline.</p>
+      </div>
+      <button class="btn sm" id="sSave">Save settings</button>
+    </div>
+
+    <div class="card">
+      <h2>Stamped photo proof</h2>
+      <p class="sub">Every punch can save a snapshot with the date, time, GPS coordinates and address burned into the image.</p>
+      <div class="field">
+        <label><input type="checkbox" id="sPhoto" style="width:auto;margin-right:8px;vertical-align:-2px">Capture a stamped photo on every punch</label>
+      </div>
+      <div class="field">
+        <label><input type="checkbox" id="sGeo" style="width:auto;margin-right:8px;vertical-align:-2px">Include GPS location in the stamp</label>
+      </div>
+      <div class="field">
+        <label><input type="checkbox" id="sGeocode" style="width:auto;margin-right:8px;vertical-align:-2px">Look up a street address from the coordinates (OpenStreetMap)</label>
+        <p class="hint">Sends the coordinates to nominatim.openstreetmap.org. Turn off to keep coordinates local — the stamp then shows lat/long only.</p>
+      </div>
+      <div class="field"><label>Site label (always stamped)</label><input id="sSite" placeholder="Head Office — Sector 62, Noida"></div>
+      <div class="row2">
+        <div class="field"><label>Photo width (px)</label><input type="number" id="sPhotoW" min="320" max="1280" step="80"></div>
+        <div class="field"><label>Keep photos for (days)</label><input type="number" id="sPhotoDays" min="1" max="3650"></div>
+      </div>
+      <button class="btn sm" id="sSave2">Save photo settings</button>
+      <button class="btn ghost sm" id="geoTest">Test location now</button>
+      <p class="hint" id="photoUsage">—</p>
+    </div>
+
+    <div class="card">
+      <h2>Data</h2>
+      <p class="sub">Everything lives in this browser only. Back it up or you will lose it when the cache is cleared.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+        <button class="btn ghost sm" id="expJson">Export backup (JSON)</button>
+        <button class="btn ghost sm" id="impJson">Import backup</button>
+        <input type="file" id="impFile" accept="application/json" style="display:none">
+      </div>
+      <div class="banner warn" id="storageWarn" style="display:none"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn danger" id="clearPunch">Delete all attendance records</button>
+        <button class="btn danger" id="clearAll">Delete everything</button>
+      </div>
+
+      <h2 style="margin-top:24px">Honest limitations</h2>
+      <p class="sub" style="margin-bottom:0">
+        • <b>No liveness detection.</b> A printed photo or a phone screen showing a colleague's face will pass. This deters casual proxy attendance; it does not prevent deliberate fraud.<br><br>
+        • <b>Accuracy degrades</b> with poor lighting, masks, glasses changes, large weight/hair changes, and for faces underrepresented in the training data. Always keep the manual fallback available.<br><br>
+        • <b>Biometric data is regulated</b> (India DPDP Act, GDPR Art. 9, Illinois BIPA). Written consent, a stated retention period, and deletion on exit are legal requirements in most jurisdictions — not optional extras.<br><br>
+        • <b>Single-browser storage.</b> This is not a multi-site HR system. For that you need a server, a database, and audit logging.<br><br>
+        • <b>A stamped photo is evidence, not proof.</b> The stamp is drawn by this page from the device's own clock and GPS. Both can be spoofed on a rooted/jailbroken or developer-mode device. It raises the effort required to cheat; it does not make the record tamper-proof. Server-side timestamping is the only real fix.<br><br>
+        • <b>GPS indoors is unreliable.</b> Accuracy of 20–500 m is normal inside a building, and browsers often fall back to Wi-Fi/IP location, which can be kilometres off. Do not use the coordinates to enforce a tight geofence.
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="modalbg" id="photoModal">
+  <div class="modal">
+    <div class="mhead">
+      <h2 id="pmTitle">Punch photo</h2>
+      <button class="btn ghost sm" id="pmDownload" style="margin-left:auto">Download</button>
+      <button class="btn ghost sm" id="pmClose">Close</button>
+    </div>
+    <img id="pmImg" alt="Stamped punch photo">
+    <div class="kv" id="pmMeta"></div>
+  </div>
+</div>
+
+<div class="modalbg" id="manualModal">
+  <div class="modal" style="max-width:420px">
+    <div class="mhead">
+      <h2>Manual entry</h2>
+      <button class="btn ghost sm" id="manualClose" style="margin-left:auto">Close</button>
+    </div>
+    <div class="field"><label>Employee</label><select id="manualSelect"></select></div>
+    <p class="hint">Still captures a GPS + timestamp photo where possible. If the kiosk camera isn't already running, it starts briefly just to take the punch photo, then stops again.</p>
+    <button class="btn" id="manualConfirm" style="width:100%">Record manual punch</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   FaceAttend — single-file attendance kiosk
+   ===================================================================== */
+
+/* ---------- storage layer (localStorage w/ in-memory fallback) ------- */
+const Store = (() => {
+  let usable = true, mem = {};
+  try {
+    const k = '__fa_probe__';
+    window.localStorage.setItem(k, '1');
+    window.localStorage.removeItem(k);
+  } catch (e) { usable = false; }
+  return {
+    persistent: usable,
+    get(key, fallback) {
+      try {
+        const raw = usable ? window.localStorage.getItem(key) : mem[key];
+        return raw == null ? fallback : JSON.parse(raw);
+      } catch (e) { return fallback; }
+    },
+    set(key, val) {
+      const raw = JSON.stringify(val);
+      try {
+        if (usable) window.localStorage.setItem(key, raw); else mem[key] = raw;
+      } catch (e) {
+        usable = false; mem[key] = raw;
+        toast('Storage full or blocked — data is now session-only', 'bad');
+      }
+    },
+    del(key){ try{ usable ? window.localStorage.removeItem(key) : delete mem[key]; }catch(e){} }
+  };
+})();
+
+const K_EMP = 'fa.employees', K_REC = 'fa.records', K_SET = 'fa.settings';
+
+const DEFAULTS = {
+  threshold:0.50, cooldown:60, hold:1200, startTime:'09:30', fullDay:8,
+  photo:true, geo:true, geocode:true, site:'', photoW:640, photoDays:90, modelUrl:''
+};
+
+let employees = Store.get(K_EMP, []);   // {id,name,empId,dept,descriptors:[[..]],photo,createdAt}
+let records   = Store.get(K_REC, []);   // {id,employeeId,name,empId,dept,type,ts,method,distance}
+let settings  = Object.assign({}, DEFAULTS, Store.get(K_SET, {}));
+
+const saveEmp = () => Store.set(K_EMP, employees);
+const saveRec = () => Store.set(K_REC, records);
+const saveSet = () => Store.set(K_SET, settings);
+
+/* ---------------------------------------------------------------------
+   PHOTO STORE — IndexedDB, because stamped JPEGs would blow the ~5 MB
+   localStorage quota after roughly 100 punches. Falls back to memory.
+   --------------------------------------------------------------------- */
+const Photos = (() => {
+  const DB = 'faceattend', STORE = 'photos';
+  let dbp = null, mem = new Map(), broken = false;
+
+  function open() {
+    if (broken) return Promise.reject(new Error('IndexedDB unavailable'));
+    if (dbp) return dbp;
+    dbp = new Promise((res, rej) => {
+      let req;
+      try { req = indexedDB.open(DB, 1); }
+      catch (e) { broken = true; return rej(e); }
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+      };
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => { broken = true; rej(req.error); };
+    }).catch(e => { dbp = null; broken = true; throw e; });
+    return dbp;
+  }
+  function tx(mode, fn) {
+    return open().then(db => new Promise((res, rej) => {
+      const t = db.transaction(STORE, mode);
+      const r = fn(t.objectStore(STORE));
+      t.oncomplete = () => res(r && r.result);
+      t.onerror = () => rej(t.error);
+      t.onabort = () => rej(t.error);
+    }));
+  }
+  return {
+    put(id, dataUrl) {
+      return tx('readwrite', s => s.put(dataUrl, id))
+        .catch(() => { mem.set(id, dataUrl); });
+    },
+    get(id) {
+      return tx('readonly', s => s.get(id))
+        .then(v => v == null ? (mem.get(id) || null) : v)
+        .catch(() => mem.get(id) || null);
+    },
+    del(id) {
+      mem.delete(id);
+      return tx('readwrite', s => s.delete(id)).catch(() => {});
+    },
+    keys() {
+      return tx('readonly', s => s.getAllKeys())
+        .then(k => k || []).catch(() => Array.from(mem.keys()));
+    },
+    all() {
+      return this.keys().then(ks =>
+        Promise.all(ks.map(k => this.get(k).then(v => [k, v]))));
+    },
+    clear() {
+      mem.clear();
+      return tx('readwrite', s => s.clear()).catch(() => {});
+    }
+  };
+})();
+
+/* ---------------------------------------------------------------------
+   GEOLOCATION — cached fix + throttled reverse geocode
+   --------------------------------------------------------------------- */
+const Geo = (() => {
+  let fix = null;             // {lat,lon,acc,ts}
+  let place = null;           // resolved address string
+  let placeKey = null;        // coord key the address belongs to
+  let lastGeocode = 0;
+  let pending = null;
+  const MAX_AGE = 5 * 60 * 1000;
+
+  const key = (lat, lon) => lat.toFixed(4) + ',' + lon.toFixed(4);
+
+  function getFix(force) {
+    if (!settings.geo) return Promise.resolve(null);
+    if (!navigator.geolocation) return Promise.resolve(null);
+    if (!force && fix && Date.now() - fix.ts < MAX_AGE) return Promise.resolve(fix);
+    if (pending) return pending;
+    pending = new Promise(res => {
+      navigator.geolocation.getCurrentPosition(
+        p => {
+          fix = { lat: p.coords.latitude, lon: p.coords.longitude,
+                  acc: p.coords.accuracy, ts: Date.now() };
+          pending = null; res(fix);
+        },
+        err => {
+          pending = null;
+          paint('bad', 'Location unavailable — ' + (err.message || 'permission denied'));
+          res(fix && Date.now() - fix.ts < MAX_AGE * 4 ? fix : null);
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+      );
+    });
+    return pending;
+  }
+
+  async function getPlace(f) {
+    if (!f || !settings.geocode) return null;
+    const k = key(f.lat, f.lon);
+    if (placeKey === k && place) return place;
+    if (Date.now() - lastGeocode < 2000) return placeKey === k ? place : null;
+    lastGeocode = Date.now();
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&lat=${f.lat}&lon=${f.lon}`;
+      const ctl = new AbortController();
+      const to = setTimeout(() => ctl.abort(), 6000);
+      const r = await fetch(url, { headers: { 'Accept': 'application/json' }, signal: ctl.signal });
+      clearTimeout(to);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      const a = j.address || {};
+      const parts = [
+        a.house_number && a.road ? a.house_number + ' ' + a.road : a.road,
+        a.neighbourhood || a.suburb || a.village,
+        a.city || a.town || a.county,
+        a.state, a.postcode, a.country
+      ].filter(Boolean);
+      place = parts.length ? parts.join(', ') : (j.display_name || null);
+      placeKey = k;
+      return place;
+    } catch (e) { return null; }
+  }
+
+  /** Full location snapshot for stamping. Never throws. */
+  async function snapshot() {
+    const f = await getFix(false).catch(() => null);
+    if (!f) { paint(settings.geo ? 'bad' : '', settings.geo ? 'Location unavailable' : 'Location off'); return null; }
+    const p = await getPlace(f).catch(() => null);
+    paint('ok', `${p || 'Coordinates only'} · ±${Math.round(f.acc)} m`);
+    return { lat: f.lat, lon: f.lon, acc: f.acc, place: p, at: f.ts };
+  }
+
+  function paint(cls, text) {
+    const el = document.getElementById('geoLine');
+    if (el) el.innerHTML = `<span class="geodot ${cls}"></span>${esc(text)}`;
+  }
+
+  return { snapshot, getFix, getPlace, paint, warm: () => { if (settings.geo) getFix(true).then(f => f && snapshot()); } };
+})();
+
+/* ---------- helpers ---------- */
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const pad = n => String(n).padStart(2, '0');
+const dayKey = ts => { const d = new Date(ts); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const ampm = h => h >= 12 ? 'PM' : 'AM';
+const h12 = h => { const r = h % 12; return r === 0 ? 12 : r; };
+const hhmm = ts => { const d = new Date(ts); return `${h12(d.getHours())}:${pad(d.getMinutes())} ${ampm(d.getHours())}`; };
+const hhmmss = ts => { const d = new Date(ts); return `${h12(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${ampm(d.getHours())}`; };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let toastTimer;
+function toast(msg, kind) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (kind ? ' ' + kind : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+/* ---------- clock ---------- */
+function tickClock() {
+  const n = new Date();
+  $('#clockTime').textContent = hhmmss(n.getTime());
+  $('#clockDate').textContent = n.toLocaleDateString(undefined,
+    { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+setInterval(tickClock, 1000); tickClock();
+
+/* ---------- nav ---------- */
+$$('nav button').forEach(b => b.addEventListener('click', () => {
+  $$('nav button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  $$('.view').forEach(v => v.classList.remove('active'));
+  $('#view-' + b.dataset.view).classList.add('active');
+  if (b.dataset.view === 'dash') renderDash();
+  if (b.dataset.view === 'enroll') renderEmpList();
+}));
+
+/* =====================================================================
+   FACE ENGINE
+   ===================================================================== */
+/* The library and its weights are fetched from a CDN. Corporate networks
+   block CDNs often enough that we try several, and let the operator point
+   at a self-hosted copy (Settings → Model source) for offline installs. */
+const LIB_SRCS = [
+  'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js',
+  'https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js',
+  'https://cdn.statically.io/gh/justadudewhohacks/face-api.js/master/dist/face-api.min.js'
+];
+const MODEL_SRCS = [
+  'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights',
+  'https://cdn.statically.io/gh/justadudewhohacks/face-api.js/master/weights',
+  'https://raw.githack.com/justadudewhohacks/face-api.js/master/weights'
+];
+
+let modelsReady = false, modelsLoading = null, libReady = false;
+
+function setEngine(text, cls) {
+  const el = $('#engineStatus');
+  el.textContent = 'engine: ' + text;
+  el.className = 'pill' + (cls ? ' ' + cls : '');
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.async = true;
+    s.onload = () => res(src);
+    s.onerror = () => { s.remove(); rej(new Error('blocked: ' + src)); };
+    document.head.appendChild(s);
+  });
+}
+
+async function loadLib() {
+  if (libReady || typeof faceapi !== 'undefined') { libReady = true; return; }
+  const tried = [];
+  for (const src of LIB_SRCS) {
+    try {
+      await loadScript(src);
+      if (typeof faceapi !== 'undefined') { libReady = true; return; }
+      tried.push(src + ' (loaded but empty)');
+    } catch (e) { tried.push(src); }
+  }
+  throw new Error('Could not load face-api.js. Tried:\n• ' + tried.join('\n• ') +
+    '\nYour network is probably blocking these CDNs — self-host the library and set a local model URL in Settings.');
+}
+
+async function loadModels() {
+  if (modelsReady) return;
+  if (modelsLoading) return modelsLoading;
+  modelsLoading = (async () => {
+    setEngine('loading library…');
+    await loadLib();
+    const candidates = (settings.modelUrl ? [settings.modelUrl] : []).concat(MODEL_SRCS);
+    let lastErr = null;
+    for (const url of candidates) {
+      try {
+        setEngine('loading models…');
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(url),
+          faceapi.nets.faceLandmark68TinyNet.loadFromUri(url),
+          faceapi.nets.faceRecognitionNet.loadFromUri(url)
+        ]);
+        modelsReady = true; setEngine('ready', 'live');
+        return;
+      } catch (e) { lastErr = e; }
+    }
+    throw new Error('Model weights could not be downloaded (' +
+      (lastErr && lastErr.message ? lastErr.message : 'unknown') +
+      '). Set a self-hosted model URL in Settings.');
+  })().catch(err => {
+    modelsLoading = null;
+    setEngine('face recognition unavailable', 'err');
+    throw err;
+  });
+  return modelsLoading;
+}
+
+const DETECT_OPTS = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+
+async function describeFace(sourceEl) {
+  const res = await faceapi
+    .detectSingleFace(sourceEl, DETECT_OPTS())
+    .withFaceLandmarks(true)
+    .withFaceDescriptor();
+  return res || null;
+}
+
+/** Nearest enrolled employee by min euclidean distance across their samples. */
+function matchFace(descriptor) {
+  let best = null, bestDist = Infinity;
+  for (const emp of employees) {
+    for (const d of emp.descriptors) {
+      const dist = euclid(descriptor, d);
+      if (dist < bestDist) { bestDist = dist; best = emp; }
+    }
+  }
+  return { employee: bestDist <= settings.threshold ? best : null, distance: bestDist };
+}
+
+function euclid(a, b) {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; s += d * d; }
+  return Math.sqrt(s);
+}
+
+/* =====================================================================
+   CAMERA
+   ===================================================================== */
+function secureContextOk() {
+  return window.isSecureContext ||
+         location.hostname === 'localhost' ||
+         location.hostname === '127.0.0.1';
+}
+
+function envCheck() {
+  const b = $('#envBanner');
+  if (location.protocol === 'file:') {
+    b.innerHTML = `<div class="banner bad"><b>Camera will not work from <code>file://</code>.</b>
+      Chrome blocks webcam access on local files. Serve the page instead — in the folder containing this file run
+      <code>python3 -m http.server 8000</code> then open <code>http://localhost:8000/attendance.html</code>.</div>`;
+  } else if (!secureContextOk()) {
+    b.innerHTML = `<div class="banner bad"><b>Insecure origin.</b> Browsers only allow camera access over
+      HTTPS or on localhost. Serve this page over HTTPS.</div>`;
+  } else if (!Store.persistent) {
+    b.innerHTML = `<div class="banner warn"><b>Browser storage unavailable.</b> Data will be lost when you
+      reload. Export a JSON backup from Settings before closing.</div>`;
+  }
+  if (!Store.persistent) {
+    const w = $('#storageWarn');
+    w.style.display = 'block';
+    w.textContent = 'localStorage is blocked in this context — records exist only in memory for this session.';
+  }
+}
+envCheck();
+
+let kioskStream = null, enrollStream = null, loopId = null;
+// Kiosk/Enroll default to the back (environment) camera: the operator holds the
+// phone up to scan someone else's face, not their own. "Switch camera" flips to
+// the front camera for the rarer case of self-enrollment or a laptop webcam.
+let kioskFacing = 'environment', enrollFacing = 'environment';
+
+async function openCamera(videoEl, facing) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw new Error('This browser does not expose getUserMedia.');
+  }
+  // "ideal" (not "exact") so devices with only one camera — most laptops —
+  // still get a stream instead of throwing OverconstrainedError.
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: { ideal: facing || 'environment' } }, audio: false
+  });
+  videoEl.srcObject = stream;
+  await videoEl.play().catch(() => {});
+  return stream;
+}
+
+function closeCamera(stream, videoEl) {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  if (videoEl) videoEl.srcObject = null;
+}
+
+/** Only the front/"user" camera should show a mirrored preview — a rear camera
+ *  pointed at someone else should look like a normal camera, not a mirror. */
+async function flipCamera(kind) {
+  const isKiosk = kind === 'kiosk';
+  const videoEl = isKiosk ? $('#video') : $('#evideo');
+  const wrap = isKiosk ? $('#camwrap') : $('#ecamwrap');
+  const stream = isKiosk ? kioskStream : enrollStream;
+  const btn = isKiosk ? $('#flipCam') : $('#eFlipCam');
+  if (!stream) return;
+
+  const newFacing = (isKiosk ? kioskFacing : enrollFacing) === 'environment' ? 'user' : 'environment';
+  btn.disabled = true;
+  try {
+    closeCamera(stream, videoEl);
+    const newStream = await openCamera(videoEl, newFacing);
+    if (isKiosk) { kioskStream = newStream; kioskFacing = newFacing; }
+    else { enrollStream = newStream; enrollFacing = newFacing; }
+    wrap.classList.toggle('mirrored', newFacing === 'user');
+    if (!isKiosk) $('#samples').classList.toggle('mirrored', newFacing === 'user');
+    toast(`Switched to ${newFacing === 'user' ? 'front' : 'back'} camera`, 'ok');
+  } catch (err) {
+    toast('Could not switch camera: ' + (err.message || err), 'bad');
+  } finally {
+    btn.disabled = false;
+  }
+}
+$('#flipCam').addEventListener('click', () => flipCamera('kiosk'));
+$('#eFlipCam').addEventListener('click', () => flipCamera('enroll'));
+
+/* =====================================================================
+   KIOSK LOOP
+   ===================================================================== */
+let mode = 'in';
+let holdTarget = null, holdSince = 0;
+const lastPunch = {}; // employeeId -> ts
+
+$$('.modeswitch button').forEach(b => b.addEventListener('click', () => {
+  $$('.modeswitch button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  mode = b.dataset.mode;
+  holdTarget = null;
+  setStatus('Ready', mode === 'in' ? 'Look at the camera to check in' : 'Look at the camera to check out', '');
+}));
+
+function setStatus(big, small, kind) {
+  const s = $('#status');
+  s.className = 'status' + (kind ? ' ' + kind : '');
+  s.innerHTML = `<div class="big">${esc(big)}</div><div class="small">${esc(small)}</div>`;
+}
+
+$('#startCam').addEventListener('click', async () => {
+  const btn = $('#startCam');
+  btn.disabled = true; btn.textContent = 'Starting…';
+
+  // 1. Camera first. Even if face recognition never loads, manual check-in
+  //    with a GPS/time-stamped photo must still work.
+  try {
+    kioskStream = await openCamera($('#video'), kioskFacing);
+    $('#camwrap').classList.toggle('mirrored', kioskFacing === 'user');
+    $('#camoff').style.display = 'none';
+    $('#stopCam').disabled = false;
+    $('#flipCam').disabled = false;
+    btn.textContent = 'Camera running';
+    setStatus('Camera on', 'Loading face recognition…', '');
+    if (settings.geo) { Geo.paint('wait', 'Acquiring GPS fix…'); Geo.warm(); }
+  } catch (err) {
+    btn.disabled = false; btn.textContent = 'Start Camera';
+    setStatus('Camera failed', err.message || String(err), 'bad');
+    toast('Camera error: ' + (err.message || err), 'bad');
+    return;
+  }
+
+  // 2. Then the recognition engine, which is allowed to fail.
+  try {
+    await loadModels();
+    setStatus('Scanning…', 'Position your face in the frame', '');
+    runLoop();
+  } catch (err) {
+    setStatus('Face recognition unavailable', 'Manual check-in still works and photos are still stamped.', 'warn');
+    $('#envBanner').innerHTML = `<div class="banner bad"><b>Face recognition could not start.</b>
+      ${esc(err.message || String(err)).replace(/\n/g, '<br>')}</div>`;
+    toast('Face recognition unavailable — manual check-in still works', 'bad');
+  }
+});
+
+$('#stopCam').addEventListener('click', () => {
+  cancelAnimationFrame(loopId); loopId = null;
+  closeCamera(kioskStream, $('#video')); kioskStream = null;
+  $('#camoff').style.display = 'grid';
+  $('#startCam').disabled = false; $('#startCam').textContent = 'Start Camera';
+  $('#stopCam').disabled = true;
+  $('#flipCam').disabled = true;
+  const c = $('#overlay'); const ctx = c.getContext('2d'); ctx && ctx.clearRect(0,0,c.width,c.height);
+  setStatus('Stopped', 'Camera is off', '');
+});
+
+let busy = false;
+function runLoop() {
+  const video = $('#video');
+  const step = async () => {
+    if (!kioskStream) return;
+    if (!busy && video.readyState >= 2) {
+      busy = true;
+      try { await scanOnce(video); } catch (e) { /* keep looping */ }
+      busy = false;
+    }
+    loopId = requestAnimationFrame(step);
+  };
+  loopId = requestAnimationFrame(step);
+}
+
+async function scanOnce(video) {
+  const res = await describeFace(video);
+  drawBox(video, res ? res.detection.box : null);
+
+  if (!res) {
+    holdTarget = null;
+    setStatus('No face detected', 'Step closer and face the camera', '');
+    return;
+  }
+  if (employees.length === 0) {
+    setStatus('No employees enrolled', 'Go to the Enroll tab and register someone first', 'warn');
+    return;
+  }
+
+  const { employee, distance } = matchFace(res.descriptor);
+  const conf = Math.max(0, Math.min(100, Math.round((1 - distance / 0.9) * 100)));
+
+  if (!employee) {
+    holdTarget = null;
+    const d = isFinite(distance) ? `Closest match distance ${distance.toFixed(2)} (threshold ${settings.threshold.toFixed(2)}).`
+                                 : 'No usable face templates enrolled.';
+    setStatus('Not recognised', `${d} Use manual check-in if this is you.`, 'bad');
+    return;
+  }
+
+  const now = Date.now();
+  const since = now - (lastPunch[employee.id] || 0);
+  if (since < settings.cooldown * 1000) {
+    holdTarget = null;
+    setStatus(employee.name, `Already recorded — cooldown ${Math.ceil((settings.cooldown * 1000 - since) / 1000)}s remaining`, 'warn');
+    return;
+  }
+
+  if (holdTarget !== employee.id) { holdTarget = employee.id; holdSince = now; }
+  const held = now - holdSince;
+  if (held < settings.hold) {
+    setStatus(employee.name, `Confirming… ${Math.round((held / settings.hold) * 100)}%  ·  ${conf}% confidence`, '');
+    return;
+  }
+
+  holdTarget = null;
+  punch(employee, mode, 'face', distance);
+  setStatus(`${employee.name} — ${mode === 'in' ? 'CHECKED IN' : 'CHECKED OUT'}`,
+            `${hhmmss(Date.now())}  ·  ${conf}% confidence`, 'ok');
+}
+
+function drawBox(video, box) {
+  const c = $('#overlay');
+  if (c.width !== video.videoWidth || c.height !== video.videoHeight) {
+    c.width = video.videoWidth || 640; c.height = video.videoHeight || 480;
+  }
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, c.width, c.height);
+  if (!box) return;
+  ctx.strokeStyle = holdTarget ? '#10b981' : '#3b82f6';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(box.x, box.y, box.width, box.height);
+}
+
+/* ---------------------------------------------------------------------
+   STAMPED PHOTO — burns site, address, lat/long, date, time and identity
+   into the captured frame.
+   --------------------------------------------------------------------- */
+function wrapText(ctx, text, maxW, maxLines) {
+  const words = String(text).split(/\s+/);
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    const test = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; }
+    else cur = test;
+    if (lines.length === maxLines) break;
+  }
+  if (lines.length < maxLines && cur) lines.push(cur);
+  if (lines.length === maxLines && cur && lines[maxLines - 1] !== cur) {
+    let last = lines[maxLines - 1];
+    while (ctx.measureText(last + '…').width > maxW && last.length > 1) last = last.slice(0, -1);
+    lines[maxLines - 1] = last + '…';
+  }
+  return lines;
+}
+
+/**
+ * Draw a frame (video or canvas) with a location/time watermark burned in.
+ * Returns a JPEG data URL, or null if there is no usable frame.
+ * @param {CanvasImageSource} source  video element or canvas
+ * @param {number} sw natural width of source
+ * @param {number} sh natural height of source
+ */
+function stampPhotoImpl(source, sw, sh, rec, loc) {
+  if (!source || !sw || !sh) return null;
+  const W = Math.max(320, Math.min(1280, settings.photoW || 640));
+  const H = Math.round(W * (sh / sw));
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+
+  // The on-screen preview is mirrored for the user's comfort (CSS scaleX(-1)),
+  // but getUserMedia frames are NOT mirrored. Draw the raw frame so the saved
+  // evidence keeps its true orientation — badge text and lanyards stay readable.
+  ctx.drawImage(source, 0, 0, W, H);
+
+  const s = W / 640;                       // scale factor vs reference width
+  const F = n => Math.round(n * s);
+  const padX = F(14);
+
+  // ---- build the text block ----
+  ctx.font = `700 ${F(15)}px Inter, system-ui, sans-serif`;
+  const maxW = W - padX * 2 - F(70);
+  const title = settings.site || (loc && loc.place ? loc.place.split(',')[0] : 'Location not set');
+  const titleLines = wrapText(ctx, title, maxW, 1);
+
+  ctx.font = `500 ${F(11)}px Inter, system-ui, sans-serif`;
+  const addrLines = loc && loc.place ? wrapText(ctx, loc.place, maxW, 2) : [];
+
+  const coordLine = loc
+    ? `Lat ${loc.lat.toFixed(6)}°   Long ${loc.lon.toFixed(6)}°   ±${Math.round(loc.acc)} m`
+    : (settings.geo ? 'GPS unavailable at capture time' : 'GPS disabled');
+
+  const d = new Date(rec.ts);
+  const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return ''; } })();
+  const timeLine = `${d.toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric'})}  ${hhmmss(rec.ts)}  ${tz ? 'GMT' + offsetStr(d) + ' · ' + tz : ''}`;
+  const whoLine  = `${rec.name}  ·  ${rec.empId || '—'}${rec.dept ? '  ·  ' + rec.dept : ''}`;
+
+  const lineH = F(15);
+  const bodyLines = addrLines.length + 3;             // addr + coords + time + who
+  const panelH = F(12) + titleLines.length * F(20) + bodyLines * lineH + F(12);
+  const py = H - panelH;
+
+  // ---- panel ----
+  const g = ctx.createLinearGradient(0, py - F(24), 0, H);
+  g.addColorStop(0, 'rgba(3,7,14,0)');
+  g.addColorStop(0.35, 'rgba(3,7,14,0.72)');
+  g.addColorStop(1, 'rgba(3,7,14,0.92)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, py - F(24), W, panelH + F(24));
+
+  // accent bar
+  ctx.fillStyle = rec.type === 'in' ? '#10b981' : '#f59e0b';
+  ctx.fillRect(0, py, F(4), panelH);
+
+  let y = py + F(12);
+  ctx.textBaseline = 'top';
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `700 ${F(15)}px Inter, system-ui, sans-serif`;
+  for (const l of titleLines) { ctx.fillText(l, padX, y); y += F(20); }
+
+  ctx.font = `500 ${F(11)}px Inter, system-ui, sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.86)';
+  for (const l of addrLines) { ctx.fillText(l, padX, y); y += lineH; }
+
+  ctx.fillStyle = '#93c5fd';
+  ctx.fillText(coordLine, padX, y); y += lineH;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `700 ${F(12)}px Inter, system-ui, sans-serif`;
+  ctx.fillText(timeLine, padX, y); y += lineH;
+
+  ctx.font = `500 ${F(11)}px Inter, system-ui, sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.72)';
+  ctx.fillText(whoLine, padX, y);
+
+  // ---- IN / OUT badge (top right) ----
+  const label = rec.type === 'in' ? 'CHECK IN' : 'CHECK OUT';
+  ctx.font = `800 ${F(12)}px Inter, system-ui, sans-serif`;
+  const bw = ctx.measureText(label).width + F(20), bh = F(26);
+  const bx = W - bw - F(12), by = F(12);
+  ctx.fillStyle = rec.type === 'in' ? 'rgba(16,185,129,0.92)' : 'rgba(245,158,11,0.92)';
+  roundRect(ctx, bx, by, bw, bh, F(7)); ctx.fill();
+  ctx.fillStyle = '#04121a';
+  ctx.fillText(label, bx + F(10), by + F(7));
+
+  // ---- method badge (top left) ----
+  const m = rec.method === 'manual' ? 'MANUAL ENTRY' : 'FACE MATCH';
+  ctx.font = `700 ${F(10)}px Inter, system-ui, sans-serif`;
+  const mw = ctx.measureText(m).width + F(16);
+  ctx.fillStyle = 'rgba(3,7,14,0.72)';
+  roundRect(ctx, F(12), by, mw, F(22), F(6)); ctx.fill();
+  ctx.fillStyle = rec.method === 'manual' ? '#fcd34d' : 'rgba(255,255,255,0.9)';
+  ctx.fillText(m, F(12) + F(8), by + F(6));
+
+  return c.toDataURL('image/jpeg', 0.78);
+}
+
+function offsetStr(d) {
+  const o = -d.getTimezoneOffset();
+  const sign = o >= 0 ? '+' : '-';
+  return sign + pad(Math.floor(Math.abs(o) / 60)) + ':' + pad(Math.abs(o) % 60);
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/* ---------- punch recording ---------- */
+async function punch(emp, type, method, distance, videoEl) {
+  const rec = {
+    id: uid(), employeeId: emp.id, name: emp.name, empId: emp.empId, dept: emp.dept || '',
+    type, ts: Date.now(), method, distance: distance == null ? null : +distance.toFixed(3),
+    lat: null, lon: null, acc: null, place: null, hasPhoto: false
+  };
+  // lock the cooldown immediately so the async work below can't double-punch
+  lastPunch[emp.id] = rec.ts;
+  records.push(rec); saveRec(); renderFeed();
+  toast(`${emp.name} — ${type === 'in' ? 'checked in' : 'checked out'} at ${hhmmss(rec.ts)}`, 'ok');
+
+  const video = videoEl || $('#video');
+  let frame = null;
+  // grab the raw frame NOW; geolocation may take seconds
+  if (settings.photo && video && video.videoWidth) {
+    const tmp = document.createElement('canvas');
+    tmp.width = video.videoWidth; tmp.height = video.videoHeight;
+    tmp.getContext('2d').drawImage(video, 0, 0);
+    frame = tmp;
+  }
+
+  let loc = null;
+  try { loc = await Geo.snapshot(); } catch (e) { loc = null; }
+  if (loc) { rec.lat = loc.lat; rec.lon = loc.lon; rec.acc = loc.acc; rec.place = loc.place; }
+
+  if (frame) {
+    try {
+      const url = stampPhotoImpl(frame, frame.width, frame.height, rec, loc);
+      if (url) { await Photos.put(rec.id, url); rec.hasPhoto = true; }
+    } catch (e) { console.warn('stamp failed', e); }
+  }
+  saveRec(); renderFeed();
+  if ($('#view-dash').classList.contains('active')) renderDash();
+}
+
+/* ---------- manual fallback ---------- */
+function renderManualSelect() {
+  const sel = $('#manualSelect');
+  if (!sel) return;
+  sel.innerHTML = employees.length
+    ? employees.map(e => `<option value="${e.id}">${esc(e.name)} (${esc(e.empId)})</option>`).join('')
+    : '<option value="">No employees enrolled</option>';
+}
+
+$('#manualBtn').addEventListener('click', () => {
+  if (!employees.length) { toast('No employees enrolled yet', 'bad'); return; }
+  renderManualSelect();
+  $('#manualModal').classList.add('show');
+});
+$('#manualClose').addEventListener('click', () => $('#manualModal').classList.remove('show'));
+$('#manualModal').addEventListener('click', e => {
+  if (e.target.id === 'manualModal') $('#manualModal').classList.remove('show');
+});
+
+$('#manualConfirm').addEventListener('click', async () => {
+  const sel = $('#manualSelect');
+  const emp = employees.find(x => x.id === sel.value);
+  if (!emp) { toast('Choose an employee', 'bad'); return; }
+  $('#manualModal').classList.remove('show');
+
+  // If the kiosk camera isn't already running, start it just long enough to
+  // grab a punch photo, so a manual entry gets the same GPS+time stamp proof
+  // a face match would — then stop it again rather than leaving it live.
+  let tempStream = null, videoEl = $('#video');
+  const startedTemp = !kioskStream;
+  if (startedTemp) {
+    try {
+      tempStream = await openCamera(videoEl, kioskFacing);
+      $('#camwrap').classList.toggle('mirrored', kioskFacing === 'user');
+      await new Promise(r => setTimeout(r, 350)); // let the sensor settle
+    } catch (e) {
+      videoEl = null; // no camera available — punch still records, just without a photo
+    }
+  }
+
+  await punch(emp, mode, 'manual', null, videoEl || undefined);
+
+  if (startedTemp) {
+    if (tempStream) closeCamera(tempStream, $('#video'));
+    $('#camoff').style.display = 'grid';
+  }
+  setStatus(`${emp.name} — ${mode === 'in' ? 'CHECKED IN' : 'CHECKED OUT'}`,
+            `${hhmmss(Date.now())}  ·  manual entry`, 'warn');
+});
+
+/* ---------- today's feed ---------- */
+function renderFeed() {
+  const today = dayKey(Date.now());
+  const todays = records.filter(r => dayKey(r.ts) === today).sort((a, b) => b.ts - a.ts);
+  const el = $('#feed');
+  if (!todays.length) { el.innerHTML = '<div class="empty" style="padding:26px">No punches yet today.</div>'; return; }
+  el.innerHTML = todays.slice(0, 12).map(r => {
+    const emp = employees.find(e => e.id === r.employeeId);
+    const img = r.hasPhoto
+      ? `<img class="thumb" data-photo="${r.id}" alt="View stamped photo" title="View stamped photo">`
+      : (emp && emp.photo ? `<img class="avatar" src="${emp.photo}" alt="">` : `<div class="avatar"></div>`);
+    const where = r.place ? r.place.split(',').slice(0, 2).join(',')
+                : (r.lat != null ? `${r.lat.toFixed(4)}, ${r.lon.toFixed(4)}` : 'no location');
+    return `<div class="feedrow">${img}
+      <div style="min-width:0"><div class="nm">${esc(r.name)}</div>
+      <div class="mt">${hhmmss(r.ts)} · ${r.method === 'manual' ? 'manual' : 'face'} · ${esc(where)}</div></div>
+      <span class="tag ${r.type}">${r.type === 'in' ? 'IN' : 'OUT'}</span></div>`;
+  }).join('');
+  hydrateThumbs(el);
+}
+
+/** Lazily pull stamped photos out of IndexedDB into any [data-photo] img. */
+function hydrateThumbs(scope) {
+  scope.querySelectorAll('img[data-photo]').forEach(img => {
+    Photos.get(img.dataset.photo).then(url => { if (url) img.src = url; });
+    img.addEventListener('click', () => openPhoto(img.dataset.photo));
+  });
+}
+
+/* ---------- photo modal ---------- */
+function openPhoto(recId) {
+  const r = records.find(x => x.id === recId);
+  if (!r) return;
+  Photos.get(recId).then(url => {
+    if (!url) { toast('Photo not found in this browser', 'bad'); return; }
+    $('#pmImg').src = url;
+    $('#pmTitle').textContent = `${r.name} — ${r.type === 'in' ? 'Check In' : 'Check Out'}`;
+    const maps = r.lat != null
+      ? `<a href="https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lon}#map=18/${r.lat}/${r.lon}" target="_blank" rel="noopener" style="color:#60a5fa">${r.lat.toFixed(6)}, ${r.lon.toFixed(6)}</a> (±${Math.round(r.acc)} m)`
+      : '<span style="color:var(--muted)">not captured</span>';
+    $('#pmMeta').innerHTML = `
+      <div class="k">Employee</div><div class="v">${esc(r.name)} · ${esc(r.empId || '—')}</div>
+      <div class="k">Department</div><div class="v">${esc(r.dept || '—')}</div>
+      <div class="k">Timestamp</div><div class="v">${dayKey(r.ts)} ${hhmmss(r.ts)} (device clock)</div>
+      <div class="k">Coordinates</div><div class="v">${maps}</div>
+      <div class="k">Address</div><div class="v">${esc(r.place || '—')}</div>
+      <div class="k">Method</div><div class="v">${esc(r.method)}${r.distance != null ? ' · distance ' + r.distance.toFixed(3) : ''}</div>`;
+    $('#pmDownload').onclick = () => {
+      fetch(url).then(x => x.blob()).then(b =>
+        download(b, `punch_${r.empId || r.name}_${dayKey(r.ts)}_${hhmmss(r.ts).replace(/:/g,'')}.jpg`));
+    };
+    $('#photoModal').classList.add('show');
+  });
+}
+$('#pmClose').addEventListener('click', () => $('#photoModal').classList.remove('show'));
+$('#photoModal').addEventListener('click', e => {
+  if (e.target.id === 'photoModal') $('#photoModal').classList.remove('show');
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') $('#photoModal').classList.remove('show');
+});
+
+/* =====================================================================
+   ENROLLMENT
+   ===================================================================== */
+let samples = []; // {descriptor:Array, photo:dataURL}
+
+$('#eStartCam').addEventListener('click', async () => {
+  const btn = $('#eStartCam');
+  btn.disabled = true; btn.textContent = 'Starting…';
+  try {
+    enrollStream = await openCamera($('#evideo'), enrollFacing);
+    $('#ecamwrap').classList.toggle('mirrored', enrollFacing === 'user');
+    $('#samples').classList.toggle('mirrored', enrollFacing === 'user');
+    $('#ecamoff').style.display = 'none';
+    $('#eFlipCam').disabled = false;
+    btn.textContent = 'Camera running';
+  } catch (err) {
+    btn.disabled = false; btn.textContent = 'Start Camera';
+    toast('Camera error: ' + (err.message || err), 'bad');
+    return;
+  }
+  try {
+    await loadModels();
+    $('#eCapture').disabled = false;
+  } catch (err) {
+    toast('Cannot enrol: ' + (err.message || err).split('\n')[0], 'bad');
+  }
+});
+
+$('#eCapture').addEventListener('click', async () => {
+  if (samples.length >= 3) { toast('Already have 3 samples — clear to redo', 'bad'); return; }
+  const btn = $('#eCapture');
+  btn.disabled = true; btn.textContent = 'Reading…';
+  try {
+    const video = $('#evideo');
+    const res = await describeFace(video);
+    if (!res) { toast('No face found — improve lighting and face the camera', 'bad'); return; }
+    samples.push({ descriptor: Array.from(res.descriptor), photo: snapshot(video, res.detection.box) });
+    renderSlots();
+    toast(`Sample ${samples.length}/3 captured`, 'ok');
+  } catch (err) {
+    toast('Capture failed: ' + (err.message || err), 'bad');
+  } finally {
+    btn.disabled = samples.length >= 3; btn.textContent = 'Capture sample';
+  }
+});
+
+function snapshot(video, box) {
+  const S = 160, c = document.createElement('canvas');
+  c.width = S; c.height = S;
+  const ctx = c.getContext('2d');
+  const m = box.width * 0.25;
+  const sx = Math.max(0, box.x - m), sy = Math.max(0, box.y - m);
+  const sw = Math.min(video.videoWidth - sx, box.width + m * 2);
+  const sh = Math.min(video.videoHeight - sy, box.height + m * 2);
+  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, S, S);
+  return c.toDataURL('image/jpeg', 0.75);
+}
+
+function renderSlots() {
+  $$('.slot').forEach((s, i) => {
+    if (samples[i]) { s.classList.add('filled'); s.innerHTML = `<img src="${samples[i].photo}" alt="">`; }
+    else { s.classList.remove('filled'); s.innerHTML = String(i + 1); }
+  });
+}
+
+$('#eClear').addEventListener('click', () => {
+  samples = []; renderSlots(); $('#eCapture').disabled = !enrollStream;
+});
+
+$('#eSave').addEventListener('click', () => {
+  const name = $('#eName').value.trim(), empId = $('#eEmpId').value.trim(), dept = $('#eDept').value.trim();
+  if (!name || !empId) { toast('Name and Employee ID are required', 'bad'); return; }
+  if (samples.length < 1) { toast('Capture at least one face sample', 'bad'); return; }
+  if (samples.length < 3) {
+    if (!window.confirm(`Only ${samples.length} sample(s) captured. Recognition will be noticeably less reliable. Save anyway?`)) return;
+  }
+  if (employees.some(e => e.empId.toLowerCase() === empId.toLowerCase())) {
+    toast('That Employee ID already exists', 'bad'); return;
+  }
+  // warn if this face already resembles an enrolled person
+  const probe = matchFace(samples[0].descriptor);
+  if (probe.employee) {
+    if (!window.confirm(`This face closely matches enrolled employee "${probe.employee.name}" (distance ${probe.distance.toFixed(2)}). Enrolling look-alikes causes mis-punches. Continue?`)) return;
+  }
+
+  employees.push({
+    id: uid(), name, empId, dept,
+    descriptors: samples.map(s => s.descriptor),
+    photo: samples[0].photo, createdAt: Date.now()
+  });
+  saveEmp();
+  $('#eName').value = ''; $('#eEmpId').value = ''; $('#eDept').value = '';
+  samples = []; renderSlots();
+  renderEmpList(); renderEmpFilter(); renderManualSelect();
+  toast(`${name} enrolled`, 'ok');
+});
+
+function renderEmpList() {
+  $('#empCount').textContent = `${employees.length} employee${employees.length === 1 ? '' : 's'} enrolled`;
+  const el = $('#empList');
+  if (!employees.length) { el.innerHTML = '<div class="empty">Nobody enrolled yet.</div>'; return; }
+  el.innerHTML = employees.map(e => `
+    <div class="feedrow">
+      ${e.photo ? `<img class="avatar" src="${e.photo}" alt="">` : '<div class="avatar"></div>'}
+      <div><div class="nm">${esc(e.name)}</div>
+      <div class="mt">${esc(e.empId)}${e.dept ? ' · ' + esc(e.dept) : ''} · ${e.descriptors.length} sample${e.descriptors.length === 1 ? '' : 's'}</div></div>
+      <button class="btn danger" style="margin-left:auto" data-del="${e.id}">Delete</button>
+    </div>`).join('');
+  el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
+    const emp = employees.find(x => x.id === b.dataset.del);
+    if (!window.confirm(`Delete ${emp.name} and their face template? Attendance history is kept.`)) return;
+    employees = employees.filter(x => x.id !== b.dataset.del);
+    saveEmp(); renderEmpList(); renderEmpFilter(); renderManualSelect();
+    toast('Employee deleted', 'ok');
+  }));
+}
+
+/* =====================================================================
+   DASHBOARD
+   ===================================================================== */
+function toMin(t) { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; }
+
+/** Collapse raw punches into one row per employee per day. */
+function buildDays(recs) {
+  const byKey = {};
+  for (const r of recs) {
+    const k = r.employeeId + '|' + dayKey(r.ts);
+    (byKey[k] = byKey[k] || []).push(r);
+  }
+  const lateMin = toMin(settings.startTime);
+  return Object.entries(byKey).map(([k, list]) => {
+    list.sort((a, b) => a.ts - b.ts);
+    const ins = list.filter(r => r.type === 'in');
+    const outs = list.filter(r => r.type === 'out');
+    const inRec = ins.length ? ins[0] : null;
+    const firstIn = inRec ? inRec.ts : null;
+    // last OUT that occurs after the first IN; otherwise the last OUT at all
+    let outRec = null;
+    const validOuts = firstIn == null ? outs : outs.filter(r => r.ts > firstIn);
+    if (validOuts.length) outRec = validOuts[validOuts.length - 1];
+    else if (outs.length) outRec = outs[outs.length - 1];
+    const lastOut = outRec ? outRec.ts : null;
+
+    let hours = null;
+    if (firstIn != null && lastOut != null && lastOut > firstIn) hours = (lastOut - firstIn) / 3600000;
+
+    let status;
+    if (firstIn == null) status = 'no-in';
+    else if (lastOut == null) status = 'open';
+    else if (hours != null && hours < settings.fullDay) status = 'short';
+    else status = 'complete';
+
+    const late = firstIn != null &&
+      (new Date(firstIn).getHours() * 60 + new Date(firstIn).getMinutes()) > lateMin;
+
+    const methods = Array.from(new Set(list.map(r => r.method)));
+    return {
+      date: k.split('|')[1], employeeId: k.split('|')[0],
+      name: list[0].name, empId: list[0].empId, dept: list[0].dept,
+      firstIn, lastOut, hours, status, late, method: methods.join('+'), punches: list.length,
+      inRec, outRec
+    };
+  }).sort((a, b) => b.date.localeCompare(a.date) || a.name.localeCompare(b.name));
+}
+
+function filtered() {
+  const from = $('#dFrom').value, to = $('#dTo').value, emp = $('#dEmp').value;
+  return records.filter(r => {
+    const d = dayKey(r.ts);
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    if (emp && r.employeeId !== emp) return false;
+    return true;
+  });
+}
+
+function renderDash() {
+  const recs = filtered();
+  const days = buildDays(recs);
+  const today = dayKey(Date.now());
+  const todayDays = buildDays(records.filter(r => dayKey(r.ts) === today));
+
+  const totalHours = days.reduce((s, d) => s + (d.hours || 0), 0);
+  const lateCount = days.filter(d => d.late).length;
+  const openCount = days.filter(d => d.status === 'open').length;
+
+  $('#stats').innerHTML = `
+    <div class="stat"><div class="v">${todayDays.length}</div><div class="k">Present today</div></div>
+    <div class="stat"><div class="v">${Math.max(0, employees.length - todayDays.length)}</div><div class="k">Absent today</div></div>
+    <div class="stat"><div class="v">${employees.length}</div><div class="k">Enrolled</div></div>
+    <div class="stat"><div class="v">${lateCount}</div><div class="k">Late (in range)</div></div>
+    <div class="stat"><div class="v">${openCount}</div><div class="k">Missing checkout</div></div>
+    <div class="stat"><div class="v">${totalHours.toFixed(1)}</div><div class="k">Total hours</div></div>`;
+
+  const chip = d => {
+    if (d.status === 'open')     return '<span class="chip open">No checkout</span>';
+    if (d.status === 'no-in')    return '<span class="chip abs">No check-in</span>';
+    if (d.status === 'short')    return '<span class="chip late">Short day</span>';
+    return '<span class="chip ok">Complete</span>';
+  };
+
+  $('#dayRows').innerHTML = days.length ? days.map(d => `
+    <tr>
+      <td>${d.date}</td>
+      <td>${esc(d.name)}</td>
+      <td>${esc(d.empId || '—')}</td>
+      <td>${esc(d.dept || '—')}</td>
+      <td>${d.firstIn ? hhmm(d.firstIn) : '—'} ${d.late ? '<span class="chip late">LATE</span>' : ''}</td>
+      <td>${d.lastOut ? hhmm(d.lastOut) : '—'}</td>
+      <td>${d.hours != null ? d.hours.toFixed(2) : '—'}</td>
+      <td>${chip(d)}</td>
+      <td>${esc(d.method)}</td>
+    </tr>`).join('')
+    : `<tr><td colspan="9"><div class="empty">No records in this range.</div></td></tr>`;
+
+  const raw = recs.slice().sort((a, b) => b.ts - a.ts).slice(0, 300);
+  $('#rawRows').innerHTML = raw.length ? raw.map(r => {
+    const where = r.place ? esc(r.place.split(',').slice(0, 3).join(','))
+      : (r.lat != null ? `${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}` : '<span style="color:var(--muted)">—</span>');
+    return `<tr>
+      <td>${r.hasPhoto ? `<img class="thumb" data-photo="${r.id}" alt="photo">` : '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${dayKey(r.ts)} ${hhmmss(r.ts)}</td>
+      <td>${esc(r.name)} <span style="color:var(--muted)">${esc(r.empId || '')}</span></td>
+      <td><span class="tag ${r.type}">${r.type === 'in' ? 'IN' : 'OUT'}</span></td>
+      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis">${where}${r.acc != null ? ` <span style="color:var(--muted)">±${Math.round(r.acc)}m</span>` : ''}</td>
+      <td>${esc(r.method)}</td>
+      <td>${r.distance == null ? '—' : r.distance.toFixed(3)}</td>
+      <td><button class="btn danger" data-drop="${r.id}">Delete</button></td>
+    </tr>`;
+  }).join('')
+    : `<tr><td colspan="8"><div class="empty">No punches in this range.</div></td></tr>`;
+
+  hydrateThumbs($('#rawRows'));
+
+  $('#rawRows').querySelectorAll('[data-drop]').forEach(b => b.addEventListener('click', () => {
+    if (!window.confirm('Delete this punch record and its photo?')) return;
+    Photos.del(b.dataset.drop);
+    records = records.filter(r => r.id !== b.dataset.drop);
+    saveRec(); renderDash(); renderFeed();
+  }));
+}
+
+function renderEmpFilter() {
+  const sel = $('#dEmp'), cur = sel.value;
+  sel.innerHTML = '<option value="">All employees</option>' +
+    employees.map(e => `<option value="${e.id}">${esc(e.name)} (${esc(e.empId)})</option>`).join('');
+  sel.value = cur;
+}
+
+$('#dFrom').addEventListener('change', renderDash);
+$('#dTo').addEventListener('change', renderDash);
+$('#dEmp').addEventListener('change', renderDash);
+$('#dToday').addEventListener('click', () => {
+  const t = dayKey(Date.now());
+  $('#dFrom').value = t; $('#dTo').value = t; renderDash();
+});
+$('#dMonth').addEventListener('click', () => {
+  const n = new Date();
+  $('#dFrom').value = `${n.getFullYear()}-${pad(n.getMonth() + 1)}-01`;
+  $('#dTo').value = dayKey(Date.now());
+  renderDash();
+});
+
+/* ---------- CSV ---------- */
+function csvCell(v) {
+  const s = String(v ?? '');
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+$('#dCsv').addEventListener('click', () => {
+  const days = buildDays(filtered());
+  if (!days.length) { toast('Nothing to export in this range', 'bad'); return; }
+  const head = ['Date','Employee','EmployeeID','Department','CheckIn','CheckOut','Hours','Late','Status','Method','Punches',
+                'InLat','InLon','InAddress','InPhoto','OutLat','OutLon','OutAddress','OutPhoto'];
+  const g = (r, f) => r && r[f] != null ? r[f] : '';
+  const rows = days.map(d => [
+    d.date, d.name, d.empId, d.dept,
+    d.firstIn ? hhmmss(d.firstIn) : '', d.lastOut ? hhmmss(d.lastOut) : '',
+    d.hours != null ? d.hours.toFixed(2) : '', d.late ? 'YES' : 'NO',
+    d.status, d.method, d.punches,
+    g(d.inRec, 'lat'), g(d.inRec, 'lon'), g(d.inRec, 'place'), d.inRec && d.inRec.hasPhoto ? 'YES' : 'NO',
+    g(d.outRec, 'lat'), g(d.outRec, 'lon'), g(d.outRec, 'place'), d.outRec && d.outRec.hasPhoto ? 'YES' : 'NO'
+  ]);
+  const csv = [head, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
+  download(new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8' }),
+    `attendance_${$('#dFrom').value || 'all'}_${$('#dTo').value || 'all'}.csv`);
+  toast('CSV exported', 'ok');
+});
+
+function download(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+/* =====================================================================
+   SETTINGS
+   ===================================================================== */
+function loadSettingsUI() {
+  $('#sThreshold').value = settings.threshold;
+  $('#thrVal').textContent = Number(settings.threshold).toFixed(2);
+  $('#sCooldown').value = settings.cooldown;
+  $('#sHold').value = settings.hold;
+  $('#sStart').value = settings.startTime;
+  $('#sFullDay').value = settings.fullDay;
+  $('#sModelUrl').value = settings.modelUrl || '';
+  $('#sPhoto').checked = !!settings.photo;
+  $('#sGeo').checked = !!settings.geo;
+  $('#sGeocode').checked = !!settings.geocode;
+  $('#sSite').value = settings.site || '';
+  $('#sPhotoW').value = settings.photoW;
+  $('#sPhotoDays').value = settings.photoDays;
+  refreshPhotoUsage();
+}
+
+$('#sSave2').addEventListener('click', () => {
+  settings.photo     = $('#sPhoto').checked;
+  settings.geo       = $('#sGeo').checked;
+  settings.geocode   = $('#sGeocode').checked;
+  settings.site      = $('#sSite').value.trim();
+  settings.photoW    = Math.max(320, Math.min(1280, parseInt($('#sPhotoW').value, 10) || DEFAULTS.photoW));
+  settings.photoDays = Math.max(1, parseInt($('#sPhotoDays').value, 10) || DEFAULTS.photoDays);
+  saveSet(); loadSettingsUI();
+  toast('Photo settings saved', 'ok');
+  if (settings.geo) Geo.warm();
+});
+
+$('#geoTest').addEventListener('click', async () => {
+  if (!settings.geo) { toast('Enable GPS first', 'bad'); return; }
+  toast('Requesting location…');
+  const loc = await Geo.snapshot();
+  if (!loc) { toast('Could not get a location fix', 'bad'); return; }
+  toast(`${loc.place || 'coords only'} · ±${Math.round(loc.acc)} m`, 'ok');
+});
+
+/** Rough storage report + retention prune. */
+async function refreshPhotoUsage() {
+  const el = $('#photoUsage'); if (!el) return;
+  try {
+    const all = await Photos.all();
+    const bytes = all.reduce((s, [, v]) => s + (v ? v.length * 0.75 : 0), 0);
+    let quota = '';
+    if (navigator.storage && navigator.storage.estimate) {
+      const e = await navigator.storage.estimate();
+      if (e.quota) quota = ` of roughly ${(e.quota / 1048576 / 1024).toFixed(1)} GB available`;
+    }
+    el.textContent = `${all.length} stamped photo${all.length === 1 ? '' : 's'} stored, about ${(bytes / 1048576).toFixed(1)} MB${quota}.`;
+  } catch (e) { el.textContent = 'Photo storage unavailable in this browser.'; }
+}
+
+/** Delete photos older than the retention window. Records are kept. */
+async function prunePhotos() {
+  const cutoff = Date.now() - settings.photoDays * 86400000;
+  const stale = records.filter(r => r.hasPhoto && r.ts < cutoff);
+  if (!stale.length) return;
+  for (const r of stale) { await Photos.del(r.id); r.hasPhoto = false; }
+  saveRec();
+  console.info(`Pruned ${stale.length} photo(s) past the ${settings.photoDays}-day retention window.`);
+}
+$('#sThreshold').addEventListener('input', e => { $('#thrVal').textContent = Number(e.target.value).toFixed(2); });
+$('#sSave').addEventListener('click', () => {
+  settings.threshold = parseFloat($('#sThreshold').value);
+  settings.cooldown  = Math.max(5, parseInt($('#sCooldown').value, 10) || DEFAULTS.cooldown);
+  settings.hold      = Math.max(0, parseInt($('#sHold').value, 10) || 0);
+  settings.startTime = $('#sStart').value || DEFAULTS.startTime;
+  settings.fullDay   = parseFloat($('#sFullDay').value) || DEFAULTS.fullDay;
+  const newModelUrl  = $('#sModelUrl').value.trim().replace(/\/+$/, '');
+  if (newModelUrl !== settings.modelUrl) { modelsReady = false; modelsLoading = null; }
+  settings.modelUrl  = newModelUrl;
+  saveSet(); loadSettingsUI(); renderDash();
+  toast('Settings saved', 'ok');
+});
+
+$('#expJson').addEventListener('click', async () => {
+  const withPhotos = window.confirm(
+    'Include the stamped photos in the backup?\n\nOK = full backup (large file, may be tens of MB)\nCancel = data only (small file, photos are lost)');
+  toast('Building backup…');
+  let photos = {};
+  if (withPhotos) {
+    try {
+      const wanted = new Set(records.filter(r => r.hasPhoto).map(r => r.id));
+      for (const [k, v] of await Photos.all()) if (wanted.has(k) && v) photos[k] = v;
+    } catch (e) { photos = {}; }
+  }
+  const payload = { version: 2, exportedAt: new Date().toISOString(), settings, employees, records, photos };
+  download(new Blob([JSON.stringify(payload)], { type: 'application/json' }),
+    `faceattend_backup_${dayKey(Date.now())}.json`);
+  toast(`Backup exported (${Object.keys(photos).length} photos)`, 'ok');
+});
+$('#impJson').addEventListener('click', () => $('#impFile').click());
+$('#impFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = async () => {
+    try {
+      const data = JSON.parse(rd.result);
+      if (!Array.isArray(data.employees) || !Array.isArray(data.records)) throw new Error('Unrecognised backup format');
+      const nPhotos = data.photos ? Object.keys(data.photos).length : 0;
+      if (!window.confirm(`Import ${data.employees.length} employees, ${data.records.length} records and ${nPhotos} photos?\n\nThis REPLACES all current data.`)) return;
+      employees = data.employees; records = data.records;
+      settings = Object.assign({}, DEFAULTS, data.settings || {});
+      await Photos.clear();
+      if (data.photos) for (const [k, v] of Object.entries(data.photos)) await Photos.put(k, v);
+      // records from a photo-less backup must not advertise photos they don't have
+      if (!nPhotos) records.forEach(r => { r.hasPhoto = false; });
+      saveEmp(); saveRec(); saveSet();
+      loadSettingsUI(); renderEmpList(); renderEmpFilter(); renderManualSelect(); renderDash(); renderFeed();
+      toast('Backup imported', 'ok');
+    } catch (err) { toast('Import failed: ' + err.message, 'bad'); }
+  };
+  rd.readAsText(f);
+  e.target.value = '';
+});
+
+$('#clearPunch').addEventListener('click', async () => {
+  if (!window.confirm('Delete ALL attendance records and their photos? Employees are kept. This cannot be undone.')) return;
+  records = []; await Photos.clear();
+  saveRec(); renderDash(); renderFeed(); refreshPhotoUsage();
+  toast('Attendance cleared', 'ok');
+});
+$('#clearAll').addEventListener('click', async () => {
+  if (!window.confirm('Delete ALL employees, face templates, attendance records and photos? This cannot be undone.')) return;
+  employees = []; records = [];
+  Store.del(K_EMP); Store.del(K_REC);
+  await Photos.clear();
+  renderEmpList(); renderEmpFilter(); renderManualSelect(); renderDash(); renderFeed(); refreshPhotoUsage();
+  toast('All data deleted', 'ok');
+});
+
+/* =====================================================================
+   INIT
+   ===================================================================== */
+loadSettingsUI();
+renderSlots();
+renderEmpList();
+renderEmpFilter(); renderManualSelect();
+renderFeed();
+$('#dFrom').value = `${new Date().getFullYear()}-${pad(new Date().getMonth() + 1)}-01`;
+$('#dTo').value = dayKey(Date.now());
+renderDash();
+prunePhotos().then(() => { renderFeed(); refreshPhotoUsage(); });
+
+window.addEventListener('beforeunload', () => {
+  closeCamera(kioskStream, $('#video'));
+  closeCamera(enrollStream, $('#evideo'));
+});
+
+/* expose pure logic for testing */
+window.__fa = { buildDays, euclid, toMin, csvCell, dayKey, stampPhotoImpl, wrapText, punch, Photos, Geo,
+                get records(){return records}, set records(v){records=v},
+                get settings(){return settings}, set settings(v){settings=v} };
+</script>
+</body>
+</html>
