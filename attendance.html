@@ -35,10 +35,6 @@
   }
   nav button:hover{background:var(--panel2);color:var(--txt)}
   nav button.active{background:var(--accent);color:#fff}
-  .pill{font-size:11px;padding:4px 9px;border-radius:20px;background:var(--panel2);
-    color:var(--muted);border:1px solid var(--line);font-weight:600}
-  .pill.live{color:var(--ok);border-color:#134e3a}
-  .pill.err{color:var(--bad);border-color:#4c1d1d}
 
   main{padding:22px;max-width:1280px;margin:0 auto}
   .view{display:none}
@@ -54,9 +50,8 @@
 
   .camwrap{position:relative;background:#000;border-radius:var(--radius);overflow:hidden;
     border:1px solid var(--line);aspect-ratio:4/3}
-  .camwrap video,.camwrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-  .camwrap canvas{pointer-events:none}
-  .camwrap.mirrored video,.camwrap.mirrored canvas{transform:scaleX(-1)}
+  .camwrap video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .camwrap.mirrored video{transform:scaleX(-1)}
   .camoff{position:absolute;inset:0;display:grid;place-items:center;text-align:center;
     color:var(--muted);font-size:13px;padding:26px;line-height:1.6;background:#0d1219}
 
@@ -74,7 +69,7 @@
 
   .status{
     border-radius:12px;padding:18px;text-align:center;background:var(--panel2);
-    border:1px solid var(--line);min-height:112px;display:flex;flex-direction:column;
+    border:1px solid var(--line);min-height:80px;display:flex;flex-direction:column;
     justify-content:center;gap:6px;transition:.2s
   }
   .status .big{font-size:20px;font-weight:700;letter-spacing:-.4px}
@@ -92,11 +87,13 @@
   .btn.danger:hover{background:rgba(239,68,68,.12)}
   .btn:disabled{opacity:.45;cursor:not-allowed}
   .btn.sm{padding:7px 12px;font-size:12.5px}
+  .btn.big{width:100%;padding:16px;font-size:15px;margin:14px 0}
 
   .feed{margin-top:20px}
   .feedrow{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--panel);
     border:1px solid var(--line);border-radius:11px;margin-bottom:8px}
-  .avatar{width:38px;height:38px;border-radius:10px;object-fit:cover;background:var(--panel2);flex-shrink:0}
+  .avatar{width:38px;height:38px;border-radius:10px;background:var(--panel2);flex-shrink:0;
+    display:grid;place-items:center;font-weight:700;font-size:12px;color:var(--muted)}
   .feedrow .nm{font-weight:600;font-size:13.5px}
   .feedrow .mt{font-size:11.5px;color:var(--muted);margin-top:2px}
   .tag{margin-left:auto;font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;flex-shrink:0}
@@ -112,14 +109,6 @@
   }
   .field input:focus,.field select:focus{border-color:var(--accent)}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-
-  .samples{display:flex;gap:8px;margin:14px 0}
-  .slot{flex:1;aspect-ratio:1;border-radius:10px;background:var(--panel2);
-    border:2px dashed var(--line);display:grid;place-items:center;color:var(--muted);
-    font-size:11px;overflow:hidden;position:relative}
-  .slot img{width:100%;height:100%;object-fit:cover}
-  .samples.mirrored .slot img{transform:scaleX(-1)}
-  .slot.filled{border-style:solid;border-color:var(--ok)}
 
   /* ---------- tables ---------- */
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
@@ -187,7 +176,6 @@
 
 <header>
   <div class="brand"><div class="logo">◉</div> FaceAttend</div>
-  <span class="pill" id="engineStatus">engine: idle</span>
   <nav>
     <button data-view="kiosk" class="active">Kiosk</button>
     <button data-view="enroll">Enroll</button>
@@ -205,7 +193,6 @@
     <div>
       <div class="camwrap" id="camwrap">
         <video id="video" autoplay muted playsinline></video>
-        <canvas id="overlay"></canvas>
         <div class="camoff" id="camoff">
           Camera is off.<br>Press <b>Start Camera</b> to begin.
         </div>
@@ -214,8 +201,8 @@
         <button class="btn" id="startCam">Start Camera</button>
         <button class="btn ghost" id="stopCam" disabled>Stop</button>
         <button class="btn ghost" id="flipCam" disabled title="Switch between front and back camera">↺ Switch camera</button>
-        <button class="btn ghost" id="manualBtn">Manual check-in</button>
       </div>
+      <p class="hint">The camera is only used to take the punch photo — there's no automatic face scanning, so it's fine to leave it off between check-ins.</p>
     </div>
 
     <div>
@@ -224,13 +211,15 @@
           <div class="t" id="clockTime">--:--:--</div>
           <div class="d" id="clockDate">—</div>
         </div>
+        <div class="field"><label>Employee</label><select id="kioskEmployee"><option value="">No employees enrolled</option></select></div>
         <div class="modeswitch">
           <button data-mode="in" class="on">↓ CHECK IN</button>
           <button data-mode="out">↑ CHECK OUT</button>
         </div>
+        <button class="btn big" id="recordPunch">Record punch</button>
         <div class="status" id="status">
           <div class="big">Ready</div>
-          <div class="small">Start the camera and look at the lens</div>
+          <div class="small">Pick an employee and tap Record punch</div>
         </div>
         <div class="geoline" id="geoLine"><span class="geodot"></span>Location: not requested</div>
       </div>
@@ -249,25 +238,7 @@
   <div class="grid2">
     <div class="card">
       <h2>Enroll an employee</h2>
-      <p class="sub">Capture 3 face samples in slightly different poses and lighting. More variety = fewer failed matches later.</p>
-
-      <div class="camwrap" id="ecamwrap" style="aspect-ratio:4/3;margin-bottom:14px">
-        <video id="evideo" autoplay muted playsinline></video>
-        <div class="camoff" id="ecamoff">Camera off — press Start Camera</div>
-      </div>
-
-      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-        <button class="btn ghost sm" id="eStartCam">Start Camera</button>
-        <button class="btn ghost sm" id="eFlipCam" disabled title="Switch between front and back camera">↺ Switch camera</button>
-        <button class="btn sm" id="eCapture" disabled>Capture sample</button>
-        <button class="btn ghost sm" id="eClear">Clear samples</button>
-      </div>
-
-      <div class="samples" id="samples">
-        <div class="slot" data-i="0">1</div>
-        <div class="slot" data-i="1">2</div>
-        <div class="slot" data-i="2">3</div>
-      </div>
+      <p class="sub">Just their name and ID — check-in is manual, so no photo or camera is needed here.</p>
 
       <div class="row2">
         <div class="field"><label>Full name *</label><input id="eName" placeholder="Priya Sharma"></div>
@@ -276,7 +247,6 @@
       <div class="field"><label>Department</label><input id="eDept" placeholder="Engineering"></div>
 
       <button class="btn" id="eSave" style="width:100%;margin-top:6px">Save employee</button>
-      <p class="hint">Face templates are biometric data. Get written consent before enrolling anyone, and delete templates when someone leaves.</p>
     </div>
 
     <div class="card">
@@ -304,7 +274,7 @@
     <table>
       <thead><tr>
         <th>Date</th><th>Employee</th><th>ID</th><th>Dept</th>
-        <th>Check In</th><th>Check Out</th><th>Hours</th><th>Status</th><th>Method</th>
+        <th>Check In</th><th>Check Out</th><th>Hours</th><th>Status</th>
       </tr></thead>
       <tbody id="dayRows"></tbody>
     </table>
@@ -312,10 +282,10 @@
 
   <div class="card" style="margin-top:20px">
     <h2>Raw punch log</h2>
-    <p class="sub">Every individual event, newest first. Use this to spot double-punches or bad reads.</p>
+    <p class="sub">Every individual event, newest first. Use this to spot double-punches.</p>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Photo</th><th>Timestamp</th><th>Employee</th><th>Type</th><th>Location</th><th>Method</th><th>Dist</th><th></th></tr></thead>
+        <thead><tr><th>Photo</th><th>Timestamp</th><th>Employee</th><th>Type</th><th>Location</th><th></th></tr></thead>
         <tbody id="rawRows"></tbody>
       </table>
     </div>
@@ -326,25 +296,13 @@
 <section class="view" id="view-settings">
   <div class="grid2">
     <div class="card">
-      <h2>Recognition</h2>
-      <p class="sub">Lower threshold = stricter matching (more "unknown", fewer false matches). 0.50 is a sane default.</p>
-      <div class="field">
-        <label>Match threshold — <span id="thrVal">0.50</span></label>
-        <input type="range" id="sThreshold" min="0.30" max="0.75" step="0.01">
-      </div>
+      <h2>Check-in rules</h2>
+      <p class="sub">Manual check-in only — there's no automatic face matching in this version, so these just govern the punch flow itself.</p>
       <div class="row2">
         <div class="field"><label>Punch cooldown (seconds)</label><input type="number" id="sCooldown" min="5" max="3600"></div>
-        <div class="field"><label>Hold-to-confirm (ms)</label><input type="number" id="sHold" min="0" max="5000" step="100"></div>
-      </div>
-      <div class="row2">
         <div class="field"><label>Work start (late after)</label><input type="time" id="sStart"></div>
-        <div class="field"><label>Full day (hours)</label><input type="number" id="sFullDay" min="1" max="24" step="0.5"></div>
       </div>
-      <div class="field">
-        <label>Model files URL (leave blank to use public CDNs)</label>
-        <input id="sModelUrl" placeholder="/weights">
-        <p class="hint">If your office network blocks CDNs, download the face-api.js <code>weights</code> folder onto your own server and put its URL here. This also makes the kiosk work fully offline.</p>
-      </div>
+      <div class="field"><label>Full day (hours)</label><input type="number" id="sFullDay" min="1" max="24" step="0.5"></div>
       <button class="btn sm" id="sSave">Save settings</button>
     </div>
 
@@ -387,12 +345,11 @@
 
       <h2 style="margin-top:24px">Honest limitations</h2>
       <p class="sub" style="margin-bottom:0">
-        • <b>No liveness detection.</b> A printed photo or a phone screen showing a colleague's face will pass. This deters casual proxy attendance; it does not prevent deliberate fraud.<br><br>
-        • <b>Accuracy degrades</b> with poor lighting, masks, glasses changes, large weight/hair changes, and for faces underrepresented in the training data. Always keep the manual fallback available.<br><br>
-        • <b>Biometric data is regulated</b> (India DPDP Act, GDPR Art. 9, Illinois BIPA). Written consent, a stated retention period, and deletion on exit are legal requirements in most jurisdictions — not optional extras.<br><br>
+        • <b>No identity verification at all.</b> Manual check-in just records whoever the operator selects from the list — nothing checks that the photo actually matches the selected name. A careless or complicit operator can check anyone in as anyone.<br><br>
+        • <b>A stamped photo is evidence, not proof.</b> The stamp is drawn by this page from the device's own clock and GPS. Both can be spoofed on a rooted/jailbroken or developer-mode device. Server-side timestamping is the only real fix.<br><br>
         • <b>Single-browser storage.</b> This is not a multi-site HR system. For that you need a server, a database, and audit logging.<br><br>
-        • <b>A stamped photo is evidence, not proof.</b> The stamp is drawn by this page from the device's own clock and GPS. Both can be spoofed on a rooted/jailbroken or developer-mode device. It raises the effort required to cheat; it does not make the record tamper-proof. Server-side timestamping is the only real fix.<br><br>
-        • <b>GPS indoors is unreliable.</b> Accuracy of 20–500 m is normal inside a building, and browsers often fall back to Wi-Fi/IP location, which can be kilometres off. Do not use the coordinates to enforce a tight geofence.
+        • <b>GPS indoors is unreliable.</b> Accuracy of 20–500 m is normal inside a building, and browsers often fall back to Wi-Fi/IP location, which can be kilometres off. Do not use the coordinates to enforce a tight geofence.<br><br>
+        • <b>Photos and location are still personal data</b>, even without any face-recognition template being extracted or stored. Get consent before enrolling and photographing anyone, and set a retention period you can justify.
       </p>
     </div>
   </div>
@@ -412,23 +369,11 @@
   </div>
 </div>
 
-<div class="modalbg" id="manualModal">
-  <div class="modal" style="max-width:420px">
-    <div class="mhead">
-      <h2>Manual entry</h2>
-      <button class="btn ghost sm" id="manualClose" style="margin-left:auto">Close</button>
-    </div>
-    <div class="field"><label>Employee</label><select id="manualSelect"></select></div>
-    <p class="hint">Still captures a GPS + timestamp photo where possible. If the kiosk camera isn't already running, it starts briefly just to take the punch photo, then stops again.</p>
-    <button class="btn" id="manualConfirm" style="width:100%">Record manual punch</button>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
 /* =====================================================================
-   FaceAttend — single-file attendance kiosk
+   FaceAttend — single-file attendance kiosk (manual check-in only)
    ===================================================================== */
 
 /* ---------- storage layer (localStorage w/ in-memory fallback) ------- */
@@ -463,12 +408,12 @@ const Store = (() => {
 const K_EMP = 'fa.employees', K_REC = 'fa.records', K_SET = 'fa.settings';
 
 const DEFAULTS = {
-  threshold:0.50, cooldown:60, hold:1200, startTime:'09:30', fullDay:8,
-  photo:true, geo:true, geocode:true, site:'', photoW:640, photoDays:90, modelUrl:''
+  cooldown:60, startTime:'09:30', fullDay:8,
+  photo:true, geo:true, geocode:true, site:'', photoW:640, photoDays:90
 };
 
-let employees = Store.get(K_EMP, []);   // {id,name,empId,dept,descriptors:[[..]],photo,createdAt}
-let records   = Store.get(K_REC, []);   // {id,employeeId,name,empId,dept,type,ts,method,distance}
+let employees = Store.get(K_EMP, []);   // {id,name,empId,dept,createdAt}
+let records   = Store.get(K_REC, []);   // {id,employeeId,name,empId,dept,type,ts,method,lat,lon,acc,place,hasPhoto}
 let settings  = Object.assign({}, DEFAULTS, Store.get(K_SET, {}));
 
 const saveEmp = () => Store.set(K_EMP, employees);
@@ -628,6 +573,7 @@ const h12 = h => { const r = h % 12; return r === 0 ? 12 : r; };
 const hhmm = ts => { const d = new Date(ts); return `${h12(d.getHours())}:${pad(d.getMinutes())} ${ampm(d.getHours())}`; };
 const hhmmss = ts => { const d = new Date(ts); return `${h12(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${ampm(d.getHours())}`; };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const initials = name => String(name || '?').trim().split(/\s+/).slice(0,2).map(w => w[0]?.toUpperCase() || '').join('') || '?';
 
 let toastTimer;
 function toast(msg, kind) {
@@ -658,115 +604,7 @@ $$('nav button').forEach(b => b.addEventListener('click', () => {
 }));
 
 /* =====================================================================
-   FACE ENGINE
-   ===================================================================== */
-/* The library and its weights are fetched from a CDN. Corporate networks
-   block CDNs often enough that we try several, and let the operator point
-   at a self-hosted copy (Settings → Model source) for offline installs. */
-const LIB_SRCS = [
-  'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js',
-  'https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js',
-  'https://cdn.statically.io/gh/justadudewhohacks/face-api.js/master/dist/face-api.min.js'
-];
-const MODEL_SRCS = [
-  'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights',
-  'https://cdn.statically.io/gh/justadudewhohacks/face-api.js/master/weights',
-  'https://raw.githack.com/justadudewhohacks/face-api.js/master/weights'
-];
-
-let modelsReady = false, modelsLoading = null, libReady = false;
-
-function setEngine(text, cls) {
-  const el = $('#engineStatus');
-  el.textContent = 'engine: ' + text;
-  el.className = 'pill' + (cls ? ' ' + cls : '');
-}
-
-function loadScript(src) {
-  return new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = src; s.async = true;
-    s.onload = () => res(src);
-    s.onerror = () => { s.remove(); rej(new Error('blocked: ' + src)); };
-    document.head.appendChild(s);
-  });
-}
-
-async function loadLib() {
-  if (libReady || typeof faceapi !== 'undefined') { libReady = true; return; }
-  const tried = [];
-  for (const src of LIB_SRCS) {
-    try {
-      await loadScript(src);
-      if (typeof faceapi !== 'undefined') { libReady = true; return; }
-      tried.push(src + ' (loaded but empty)');
-    } catch (e) { tried.push(src); }
-  }
-  throw new Error('Could not load face-api.js. Tried:\n• ' + tried.join('\n• ') +
-    '\nYour network is probably blocking these CDNs — self-host the library and set a local model URL in Settings.');
-}
-
-async function loadModels() {
-  if (modelsReady) return;
-  if (modelsLoading) return modelsLoading;
-  modelsLoading = (async () => {
-    setEngine('loading library…');
-    await loadLib();
-    const candidates = (settings.modelUrl ? [settings.modelUrl] : []).concat(MODEL_SRCS);
-    let lastErr = null;
-    for (const url of candidates) {
-      try {
-        setEngine('loading models…');
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(url),
-          faceapi.nets.faceLandmark68TinyNet.loadFromUri(url),
-          faceapi.nets.faceRecognitionNet.loadFromUri(url)
-        ]);
-        modelsReady = true; setEngine('ready', 'live');
-        return;
-      } catch (e) { lastErr = e; }
-    }
-    throw new Error('Model weights could not be downloaded (' +
-      (lastErr && lastErr.message ? lastErr.message : 'unknown') +
-      '). Set a self-hosted model URL in Settings.');
-  })().catch(err => {
-    modelsLoading = null;
-    setEngine('face recognition unavailable', 'err');
-    throw err;
-  });
-  return modelsLoading;
-}
-
-const DETECT_OPTS = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
-
-async function describeFace(sourceEl) {
-  const res = await faceapi
-    .detectSingleFace(sourceEl, DETECT_OPTS())
-    .withFaceLandmarks(true)
-    .withFaceDescriptor();
-  return res || null;
-}
-
-/** Nearest enrolled employee by min euclidean distance across their samples. */
-function matchFace(descriptor) {
-  let best = null, bestDist = Infinity;
-  for (const emp of employees) {
-    for (const d of emp.descriptors) {
-      const dist = euclid(descriptor, d);
-      if (dist < bestDist) { bestDist = dist; best = emp; }
-    }
-  }
-  return { employee: bestDist <= settings.threshold ? best : null, distance: bestDist };
-}
-
-function euclid(a, b) {
-  let s = 0;
-  for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; s += d * d; }
-  return Math.sqrt(s);
-}
-
-/* =====================================================================
-   CAMERA
+   CAMERA — used only to grab the punch photo, never for recognition.
    ===================================================================== */
 function secureContextOk() {
   return window.isSecureContext ||
@@ -795,11 +633,11 @@ function envCheck() {
 }
 envCheck();
 
-let kioskStream = null, enrollStream = null, loopId = null;
-// Kiosk/Enroll default to the back (environment) camera: the operator holds the
-// phone up to scan someone else's face, not their own. "Switch camera" flips to
-// the front camera for the rarer case of self-enrollment or a laptop webcam.
-let kioskFacing = 'environment', enrollFacing = 'environment';
+let kioskStream = null;
+// Defaults to the back (environment) camera: the operator holds the phone up
+// to photograph someone else, not themselves. "Switch camera" flips to the
+// front camera for a laptop webcam or a self check-in.
+let kioskFacing = 'environment';
 
 async function openCamera(videoEl, facing) {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -822,23 +660,16 @@ function closeCamera(stream, videoEl) {
 
 /** Only the front/"user" camera should show a mirrored preview — a rear camera
  *  pointed at someone else should look like a normal camera, not a mirror. */
-async function flipCamera(kind) {
-  const isKiosk = kind === 'kiosk';
-  const videoEl = isKiosk ? $('#video') : $('#evideo');
-  const wrap = isKiosk ? $('#camwrap') : $('#ecamwrap');
-  const stream = isKiosk ? kioskStream : enrollStream;
-  const btn = isKiosk ? $('#flipCam') : $('#eFlipCam');
-  if (!stream) return;
-
-  const newFacing = (isKiosk ? kioskFacing : enrollFacing) === 'environment' ? 'user' : 'environment';
+async function flipCamera() {
+  const videoEl = $('#video'), wrap = $('#camwrap'), btn = $('#flipCam');
+  if (!kioskStream) return;
+  const newFacing = kioskFacing === 'environment' ? 'user' : 'environment';
   btn.disabled = true;
   try {
-    closeCamera(stream, videoEl);
-    const newStream = await openCamera(videoEl, newFacing);
-    if (isKiosk) { kioskStream = newStream; kioskFacing = newFacing; }
-    else { enrollStream = newStream; enrollFacing = newFacing; }
+    closeCamera(kioskStream, videoEl);
+    kioskStream = await openCamera(videoEl, newFacing);
+    kioskFacing = newFacing;
     wrap.classList.toggle('mirrored', newFacing === 'user');
-    if (!isKiosk) $('#samples').classList.toggle('mirrored', newFacing === 'user');
     toast(`Switched to ${newFacing === 'user' ? 'front' : 'back'} camera`, 'ok');
   } catch (err) {
     toast('Could not switch camera: ' + (err.message || err), 'bad');
@@ -846,22 +677,45 @@ async function flipCamera(kind) {
     btn.disabled = false;
   }
 }
-$('#flipCam').addEventListener('click', () => flipCamera('kiosk'));
-$('#eFlipCam').addEventListener('click', () => flipCamera('enroll'));
+$('#flipCam').addEventListener('click', flipCamera);
+
+$('#startCam').addEventListener('click', async () => {
+  const btn = $('#startCam');
+  btn.disabled = true; btn.textContent = 'Starting…';
+  try {
+    kioskStream = await openCamera($('#video'), kioskFacing);
+    $('#camwrap').classList.toggle('mirrored', kioskFacing === 'user');
+    $('#camoff').style.display = 'none';
+    $('#stopCam').disabled = false;
+    $('#flipCam').disabled = false;
+    btn.textContent = 'Camera running';
+    if (settings.geo) { Geo.paint('wait', 'Acquiring GPS fix…'); Geo.warm(); }
+  } catch (err) {
+    btn.disabled = false; btn.textContent = 'Start Camera';
+    setStatus('Camera failed', err.message || String(err), 'bad');
+    toast('Camera error: ' + (err.message || err), 'bad');
+  }
+});
+
+$('#stopCam').addEventListener('click', () => {
+  closeCamera(kioskStream, $('#video')); kioskStream = null;
+  $('#camoff').style.display = 'grid';
+  $('#startCam').disabled = false; $('#startCam').textContent = 'Start Camera';
+  $('#stopCam').disabled = true;
+  $('#flipCam').disabled = true;
+  setStatus('Ready', 'Pick an employee and tap Record punch', '');
+});
 
 /* =====================================================================
-   KIOSK LOOP
+   MANUAL CHECK-IN
    ===================================================================== */
 let mode = 'in';
-let holdTarget = null, holdSince = 0;
 const lastPunch = {}; // employeeId -> ts
 
 $$('.modeswitch button').forEach(b => b.addEventListener('click', () => {
   $$('.modeswitch button').forEach(x => x.classList.remove('on'));
   b.classList.add('on');
   mode = b.dataset.mode;
-  holdTarget = null;
-  setStatus('Ready', mode === 'in' ? 'Look at the camera to check in' : 'Look at the camera to check out', '');
 }));
 
 function setStatus(big, small, kind) {
@@ -870,125 +724,53 @@ function setStatus(big, small, kind) {
   s.innerHTML = `<div class="big">${esc(big)}</div><div class="small">${esc(small)}</div>`;
 }
 
-$('#startCam').addEventListener('click', async () => {
-  const btn = $('#startCam');
-  btn.disabled = true; btn.textContent = 'Starting…';
-
-  // 1. Camera first. Even if face recognition never loads, manual check-in
-  //    with a GPS/time-stamped photo must still work.
-  try {
-    kioskStream = await openCamera($('#video'), kioskFacing);
-    $('#camwrap').classList.toggle('mirrored', kioskFacing === 'user');
-    $('#camoff').style.display = 'none';
-    $('#stopCam').disabled = false;
-    $('#flipCam').disabled = false;
-    btn.textContent = 'Camera running';
-    setStatus('Camera on', 'Loading face recognition…', '');
-    if (settings.geo) { Geo.paint('wait', 'Acquiring GPS fix…'); Geo.warm(); }
-  } catch (err) {
-    btn.disabled = false; btn.textContent = 'Start Camera';
-    setStatus('Camera failed', err.message || String(err), 'bad');
-    toast('Camera error: ' + (err.message || err), 'bad');
-    return;
-  }
-
-  // 2. Then the recognition engine, which is allowed to fail.
-  try {
-    await loadModels();
-    setStatus('Scanning…', 'Position your face in the frame', '');
-    runLoop();
-  } catch (err) {
-    setStatus('Face recognition unavailable', 'Manual check-in still works and photos are still stamped.', 'warn');
-    $('#envBanner').innerHTML = `<div class="banner bad"><b>Face recognition could not start.</b>
-      ${esc(err.message || String(err)).replace(/\n/g, '<br>')}</div>`;
-    toast('Face recognition unavailable — manual check-in still works', 'bad');
-  }
-});
-
-$('#stopCam').addEventListener('click', () => {
-  cancelAnimationFrame(loopId); loopId = null;
-  closeCamera(kioskStream, $('#video')); kioskStream = null;
-  $('#camoff').style.display = 'grid';
-  $('#startCam').disabled = false; $('#startCam').textContent = 'Start Camera';
-  $('#stopCam').disabled = true;
-  $('#flipCam').disabled = true;
-  const c = $('#overlay'); const ctx = c.getContext('2d'); ctx && ctx.clearRect(0,0,c.width,c.height);
-  setStatus('Stopped', 'Camera is off', '');
-});
-
-let busy = false;
-function runLoop() {
-  const video = $('#video');
-  const step = async () => {
-    if (!kioskStream) return;
-    if (!busy && video.readyState >= 2) {
-      busy = true;
-      try { await scanOnce(video); } catch (e) { /* keep looping */ }
-      busy = false;
-    }
-    loopId = requestAnimationFrame(step);
-  };
-  loopId = requestAnimationFrame(step);
+function renderKioskEmployeeSelect() {
+  const sel = $('#kioskEmployee');
+  const cur = sel.value;
+  sel.innerHTML = employees.length
+    ? employees.map(e => `<option value="${e.id}">${esc(e.name)} (${esc(e.empId)})</option>`).join('')
+    : '<option value="">No employees enrolled</option>';
+  if (employees.some(e => e.id === cur)) sel.value = cur;
 }
 
-async function scanOnce(video) {
-  const res = await describeFace(video);
-  drawBox(video, res ? res.detection.box : null);
-
-  if (!res) {
-    holdTarget = null;
-    setStatus('No face detected', 'Step closer and face the camera', '');
-    return;
-  }
-  if (employees.length === 0) {
-    setStatus('No employees enrolled', 'Go to the Enroll tab and register someone first', 'warn');
-    return;
-  }
-
-  const { employee, distance } = matchFace(res.descriptor);
-  const conf = Math.max(0, Math.min(100, Math.round((1 - distance / 0.9) * 100)));
-
-  if (!employee) {
-    holdTarget = null;
-    const d = isFinite(distance) ? `Closest match distance ${distance.toFixed(2)} (threshold ${settings.threshold.toFixed(2)}).`
-                                 : 'No usable face templates enrolled.';
-    setStatus('Not recognised', `${d} Use manual check-in if this is you.`, 'bad');
-    return;
-  }
+$('#recordPunch').addEventListener('click', async () => {
+  const emp = employees.find(e => e.id === $('#kioskEmployee').value);
+  if (!emp) { toast('Enroll and pick an employee first', 'bad'); return; }
 
   const now = Date.now();
-  const since = now - (lastPunch[employee.id] || 0);
+  const since = now - (lastPunch[emp.id] || 0);
   if (since < settings.cooldown * 1000) {
-    holdTarget = null;
-    setStatus(employee.name, `Already recorded — cooldown ${Math.ceil((settings.cooldown * 1000 - since) / 1000)}s remaining`, 'warn');
+    setStatus(emp.name, `Already recorded — cooldown ${Math.ceil((settings.cooldown * 1000 - since) / 1000)}s remaining`, 'warn');
     return;
   }
 
-  if (holdTarget !== employee.id) { holdTarget = employee.id; holdSince = now; }
-  const held = now - holdSince;
-  if (held < settings.hold) {
-    setStatus(employee.name, `Confirming… ${Math.round((held / settings.hold) * 100)}%  ·  ${conf}% confidence`, '');
-    return;
+  const btn = $('#recordPunch');
+  btn.disabled = true;
+
+  // If the camera isn't already running, start it just long enough to grab
+  // a punch photo, then stop it again rather than leaving it live.
+  let tempStream = null, videoEl = $('#video');
+  const startedTemp = !kioskStream;
+  if (startedTemp) {
+    try {
+      tempStream = await openCamera(videoEl, kioskFacing);
+      $('#camwrap').classList.toggle('mirrored', kioskFacing === 'user');
+      await new Promise(r => setTimeout(r, 350)); // let the sensor settle
+    } catch (e) {
+      videoEl = null; // no camera available — punch still records, just without a photo
+    }
   }
 
-  holdTarget = null;
-  punch(employee, mode, 'face', distance);
-  setStatus(`${employee.name} — ${mode === 'in' ? 'CHECKED IN' : 'CHECKED OUT'}`,
-            `${hhmmss(Date.now())}  ·  ${conf}% confidence`, 'ok');
-}
+  await punch(emp, mode, videoEl || undefined);
 
-function drawBox(video, box) {
-  const c = $('#overlay');
-  if (c.width !== video.videoWidth || c.height !== video.videoHeight) {
-    c.width = video.videoWidth || 640; c.height = video.videoHeight || 480;
+  if (startedTemp) {
+    if (tempStream) closeCamera(tempStream, $('#video'));
+    $('#camoff').style.display = 'grid';
   }
-  const ctx = c.getContext('2d');
-  ctx.clearRect(0, 0, c.width, c.height);
-  if (!box) return;
-  ctx.strokeStyle = holdTarget ? '#10b981' : '#3b82f6';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(box.x, box.y, box.width, box.height);
-}
+  setStatus(`${emp.name} — ${mode === 'in' ? 'CHECKED IN' : 'CHECKED OUT'}`,
+            `${hhmmss(Date.now())}`, 'ok');
+  btn.disabled = false;
+});
 
 /* ---------------------------------------------------------------------
    STAMPED PHOTO — burns site, address, lat/long, date, time and identity
@@ -1028,7 +810,7 @@ function stampPhotoImpl(source, sw, sh, rec, loc) {
   c.width = W; c.height = H;
   const ctx = c.getContext('2d');
 
-  // The on-screen preview is mirrored for the user's comfort (CSS scaleX(-1)),
+  // The on-screen preview may be mirrored for comfort (front camera only),
   // but getUserMedia frames are NOT mirrored. Draw the raw frame so the saved
   // evidence keeps its true orientation — badge text and lanyards stay readable.
   ctx.drawImage(source, 0, 0, W, H);
@@ -1104,13 +886,13 @@ function stampPhotoImpl(source, sw, sh, rec, loc) {
   ctx.fillStyle = '#04121a';
   ctx.fillText(label, bx + F(10), by + F(7));
 
-  // ---- method badge (top left) ----
-  const m = rec.method === 'manual' ? 'MANUAL ENTRY' : 'FACE MATCH';
+  // ---- method badge (top left) — manual check-in only, always this label ----
+  const m = 'MANUAL ENTRY';
   ctx.font = `700 ${F(10)}px Inter, system-ui, sans-serif`;
   const mw = ctx.measureText(m).width + F(16);
   ctx.fillStyle = 'rgba(3,7,14,0.72)';
   roundRect(ctx, F(12), by, mw, F(22), F(6)); ctx.fill();
-  ctx.fillStyle = rec.method === 'manual' ? '#fcd34d' : 'rgba(255,255,255,0.9)';
+  ctx.fillStyle = '#fcd34d';
   ctx.fillText(m, F(12) + F(8), by + F(6));
 
   return c.toDataURL('image/jpeg', 0.78);
@@ -1133,10 +915,10 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 /* ---------- punch recording ---------- */
-async function punch(emp, type, method, distance, videoEl) {
+async function punch(emp, type, videoEl) {
   const rec = {
     id: uid(), employeeId: emp.id, name: emp.name, empId: emp.empId, dept: emp.dept || '',
-    type, ts: Date.now(), method, distance: distance == null ? null : +distance.toFixed(3),
+    type, ts: Date.now(), method: 'manual',
     lat: null, lon: null, acc: null, place: null, hasPhoto: false
   };
   // lock the cooldown immediately so the async work below can't double-punch
@@ -1168,56 +950,6 @@ async function punch(emp, type, method, distance, videoEl) {
   if ($('#view-dash').classList.contains('active')) renderDash();
 }
 
-/* ---------- manual fallback ---------- */
-function renderManualSelect() {
-  const sel = $('#manualSelect');
-  if (!sel) return;
-  sel.innerHTML = employees.length
-    ? employees.map(e => `<option value="${e.id}">${esc(e.name)} (${esc(e.empId)})</option>`).join('')
-    : '<option value="">No employees enrolled</option>';
-}
-
-$('#manualBtn').addEventListener('click', () => {
-  if (!employees.length) { toast('No employees enrolled yet', 'bad'); return; }
-  renderManualSelect();
-  $('#manualModal').classList.add('show');
-});
-$('#manualClose').addEventListener('click', () => $('#manualModal').classList.remove('show'));
-$('#manualModal').addEventListener('click', e => {
-  if (e.target.id === 'manualModal') $('#manualModal').classList.remove('show');
-});
-
-$('#manualConfirm').addEventListener('click', async () => {
-  const sel = $('#manualSelect');
-  const emp = employees.find(x => x.id === sel.value);
-  if (!emp) { toast('Choose an employee', 'bad'); return; }
-  $('#manualModal').classList.remove('show');
-
-  // If the kiosk camera isn't already running, start it just long enough to
-  // grab a punch photo, so a manual entry gets the same GPS+time stamp proof
-  // a face match would — then stop it again rather than leaving it live.
-  let tempStream = null, videoEl = $('#video');
-  const startedTemp = !kioskStream;
-  if (startedTemp) {
-    try {
-      tempStream = await openCamera(videoEl, kioskFacing);
-      $('#camwrap').classList.toggle('mirrored', kioskFacing === 'user');
-      await new Promise(r => setTimeout(r, 350)); // let the sensor settle
-    } catch (e) {
-      videoEl = null; // no camera available — punch still records, just without a photo
-    }
-  }
-
-  await punch(emp, mode, 'manual', null, videoEl || undefined);
-
-  if (startedTemp) {
-    if (tempStream) closeCamera(tempStream, $('#video'));
-    $('#camoff').style.display = 'grid';
-  }
-  setStatus(`${emp.name} — ${mode === 'in' ? 'CHECKED IN' : 'CHECKED OUT'}`,
-            `${hhmmss(Date.now())}  ·  manual entry`, 'warn');
-});
-
 /* ---------- today's feed ---------- */
 function renderFeed() {
   const today = dayKey(Date.now());
@@ -1225,15 +957,14 @@ function renderFeed() {
   const el = $('#feed');
   if (!todays.length) { el.innerHTML = '<div class="empty" style="padding:26px">No punches yet today.</div>'; return; }
   el.innerHTML = todays.slice(0, 12).map(r => {
-    const emp = employees.find(e => e.id === r.employeeId);
     const img = r.hasPhoto
       ? `<img class="thumb" data-photo="${r.id}" alt="View stamped photo" title="View stamped photo">`
-      : (emp && emp.photo ? `<img class="avatar" src="${emp.photo}" alt="">` : `<div class="avatar"></div>`);
+      : `<div class="avatar">${esc(initials(r.name))}</div>`;
     const where = r.place ? r.place.split(',').slice(0, 2).join(',')
                 : (r.lat != null ? `${r.lat.toFixed(4)}, ${r.lon.toFixed(4)}` : 'no location');
     return `<div class="feedrow">${img}
       <div style="min-width:0"><div class="nm">${esc(r.name)}</div>
-      <div class="mt">${hhmmss(r.ts)} · ${r.method === 'manual' ? 'manual' : 'face'} · ${esc(where)}</div></div>
+      <div class="mt">${hhmmss(r.ts)} · ${esc(where)}</div></div>
       <span class="tag ${r.type}">${r.type === 'in' ? 'IN' : 'OUT'}</span></div>`;
   }).join('');
   hydrateThumbs(el);
@@ -1263,8 +994,7 @@ function openPhoto(recId) {
       <div class="k">Department</div><div class="v">${esc(r.dept || '—')}</div>
       <div class="k">Timestamp</div><div class="v">${dayKey(r.ts)} ${hhmmss(r.ts)} (device clock)</div>
       <div class="k">Coordinates</div><div class="v">${maps}</div>
-      <div class="k">Address</div><div class="v">${esc(r.place || '—')}</div>
-      <div class="k">Method</div><div class="v">${esc(r.method)}${r.distance != null ? ' · distance ' + r.distance.toFixed(3) : ''}</div>`;
+      <div class="k">Address</div><div class="v">${esc(r.place || '—')}</div>`;
     $('#pmDownload').onclick = () => {
       fetch(url).then(x => x.blob()).then(b =>
         download(b, `punch_${r.empId || r.name}_${dayKey(r.ts)}_${hhmmss(r.ts).replace(/:/g,'')}.jpg`));
@@ -1281,99 +1011,19 @@ document.addEventListener('keydown', e => {
 });
 
 /* =====================================================================
-   ENROLLMENT
+   ENROLLMENT — name + ID only, no face capture needed anymore.
    ===================================================================== */
-let samples = []; // {descriptor:Array, photo:dataURL}
-
-$('#eStartCam').addEventListener('click', async () => {
-  const btn = $('#eStartCam');
-  btn.disabled = true; btn.textContent = 'Starting…';
-  try {
-    enrollStream = await openCamera($('#evideo'), enrollFacing);
-    $('#ecamwrap').classList.toggle('mirrored', enrollFacing === 'user');
-    $('#samples').classList.toggle('mirrored', enrollFacing === 'user');
-    $('#ecamoff').style.display = 'none';
-    $('#eFlipCam').disabled = false;
-    btn.textContent = 'Camera running';
-  } catch (err) {
-    btn.disabled = false; btn.textContent = 'Start Camera';
-    toast('Camera error: ' + (err.message || err), 'bad');
-    return;
-  }
-  try {
-    await loadModels();
-    $('#eCapture').disabled = false;
-  } catch (err) {
-    toast('Cannot enrol: ' + (err.message || err).split('\n')[0], 'bad');
-  }
-});
-
-$('#eCapture').addEventListener('click', async () => {
-  if (samples.length >= 3) { toast('Already have 3 samples — clear to redo', 'bad'); return; }
-  const btn = $('#eCapture');
-  btn.disabled = true; btn.textContent = 'Reading…';
-  try {
-    const video = $('#evideo');
-    const res = await describeFace(video);
-    if (!res) { toast('No face found — improve lighting and face the camera', 'bad'); return; }
-    samples.push({ descriptor: Array.from(res.descriptor), photo: snapshot(video, res.detection.box) });
-    renderSlots();
-    toast(`Sample ${samples.length}/3 captured`, 'ok');
-  } catch (err) {
-    toast('Capture failed: ' + (err.message || err), 'bad');
-  } finally {
-    btn.disabled = samples.length >= 3; btn.textContent = 'Capture sample';
-  }
-});
-
-function snapshot(video, box) {
-  const S = 160, c = document.createElement('canvas');
-  c.width = S; c.height = S;
-  const ctx = c.getContext('2d');
-  const m = box.width * 0.25;
-  const sx = Math.max(0, box.x - m), sy = Math.max(0, box.y - m);
-  const sw = Math.min(video.videoWidth - sx, box.width + m * 2);
-  const sh = Math.min(video.videoHeight - sy, box.height + m * 2);
-  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, S, S);
-  return c.toDataURL('image/jpeg', 0.75);
-}
-
-function renderSlots() {
-  $$('.slot').forEach((s, i) => {
-    if (samples[i]) { s.classList.add('filled'); s.innerHTML = `<img src="${samples[i].photo}" alt="">`; }
-    else { s.classList.remove('filled'); s.innerHTML = String(i + 1); }
-  });
-}
-
-$('#eClear').addEventListener('click', () => {
-  samples = []; renderSlots(); $('#eCapture').disabled = !enrollStream;
-});
-
 $('#eSave').addEventListener('click', () => {
   const name = $('#eName').value.trim(), empId = $('#eEmpId').value.trim(), dept = $('#eDept').value.trim();
   if (!name || !empId) { toast('Name and Employee ID are required', 'bad'); return; }
-  if (samples.length < 1) { toast('Capture at least one face sample', 'bad'); return; }
-  if (samples.length < 3) {
-    if (!window.confirm(`Only ${samples.length} sample(s) captured. Recognition will be noticeably less reliable. Save anyway?`)) return;
-  }
   if (employees.some(e => e.empId.toLowerCase() === empId.toLowerCase())) {
     toast('That Employee ID already exists', 'bad'); return;
   }
-  // warn if this face already resembles an enrolled person
-  const probe = matchFace(samples[0].descriptor);
-  if (probe.employee) {
-    if (!window.confirm(`This face closely matches enrolled employee "${probe.employee.name}" (distance ${probe.distance.toFixed(2)}). Enrolling look-alikes causes mis-punches. Continue?`)) return;
-  }
 
-  employees.push({
-    id: uid(), name, empId, dept,
-    descriptors: samples.map(s => s.descriptor),
-    photo: samples[0].photo, createdAt: Date.now()
-  });
+  employees.push({ id: uid(), name, empId, dept, createdAt: Date.now() });
   saveEmp();
   $('#eName').value = ''; $('#eEmpId').value = ''; $('#eDept').value = '';
-  samples = []; renderSlots();
-  renderEmpList(); renderEmpFilter(); renderManualSelect();
+  renderEmpList(); renderEmpFilter(); renderKioskEmployeeSelect();
   toast(`${name} enrolled`, 'ok');
 });
 
@@ -1383,16 +1033,16 @@ function renderEmpList() {
   if (!employees.length) { el.innerHTML = '<div class="empty">Nobody enrolled yet.</div>'; return; }
   el.innerHTML = employees.map(e => `
     <div class="feedrow">
-      ${e.photo ? `<img class="avatar" src="${e.photo}" alt="">` : '<div class="avatar"></div>'}
+      <div class="avatar">${esc(initials(e.name))}</div>
       <div><div class="nm">${esc(e.name)}</div>
-      <div class="mt">${esc(e.empId)}${e.dept ? ' · ' + esc(e.dept) : ''} · ${e.descriptors.length} sample${e.descriptors.length === 1 ? '' : 's'}</div></div>
+      <div class="mt">${esc(e.empId)}${e.dept ? ' · ' + esc(e.dept) : ''}</div></div>
       <button class="btn danger" style="margin-left:auto" data-del="${e.id}">Delete</button>
     </div>`).join('');
   el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
     const emp = employees.find(x => x.id === b.dataset.del);
-    if (!window.confirm(`Delete ${emp.name} and their face template? Attendance history is kept.`)) return;
+    if (!window.confirm(`Delete ${emp.name}? Their attendance history is kept.`)) return;
     employees = employees.filter(x => x.id !== b.dataset.del);
-    saveEmp(); renderEmpList(); renderEmpFilter(); renderManualSelect();
+    saveEmp(); renderEmpList(); renderEmpFilter(); renderKioskEmployeeSelect();
     toast('Employee deleted', 'ok');
   }));
 }
@@ -1435,11 +1085,10 @@ function buildDays(recs) {
     const late = firstIn != null &&
       (new Date(firstIn).getHours() * 60 + new Date(firstIn).getMinutes()) > lateMin;
 
-    const methods = Array.from(new Set(list.map(r => r.method)));
     return {
       date: k.split('|')[1], employeeId: k.split('|')[0],
       name: list[0].name, empId: list[0].empId, dept: list[0].dept,
-      firstIn, lastOut, hours, status, late, method: methods.join('+'), punches: list.length,
+      firstIn, lastOut, hours, status, late, punches: list.length,
       inRec, outRec
     };
   }).sort((a, b) => b.date.localeCompare(a.date) || a.name.localeCompare(b.name));
@@ -1491,9 +1140,8 @@ function renderDash() {
       <td>${d.lastOut ? hhmm(d.lastOut) : '—'}</td>
       <td>${d.hours != null ? d.hours.toFixed(2) : '—'}</td>
       <td>${chip(d)}</td>
-      <td>${esc(d.method)}</td>
     </tr>`).join('')
-    : `<tr><td colspan="9"><div class="empty">No records in this range.</div></td></tr>`;
+    : `<tr><td colspan="8"><div class="empty">No records in this range.</div></td></tr>`;
 
   const raw = recs.slice().sort((a, b) => b.ts - a.ts).slice(0, 300);
   $('#rawRows').innerHTML = raw.length ? raw.map(r => {
@@ -1505,12 +1153,10 @@ function renderDash() {
       <td>${esc(r.name)} <span style="color:var(--muted)">${esc(r.empId || '')}</span></td>
       <td><span class="tag ${r.type}">${r.type === 'in' ? 'IN' : 'OUT'}</span></td>
       <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis">${where}${r.acc != null ? ` <span style="color:var(--muted)">±${Math.round(r.acc)}m</span>` : ''}</td>
-      <td>${esc(r.method)}</td>
-      <td>${r.distance == null ? '—' : r.distance.toFixed(3)}</td>
       <td><button class="btn danger" data-drop="${r.id}">Delete</button></td>
     </tr>`;
   }).join('')
-    : `<tr><td colspan="8"><div class="empty">No punches in this range.</div></td></tr>`;
+    : `<tr><td colspan="6"><div class="empty">No punches in this range.</div></td></tr>`;
 
   hydrateThumbs($('#rawRows'));
 
@@ -1551,14 +1197,14 @@ function csvCell(v) {
 $('#dCsv').addEventListener('click', () => {
   const days = buildDays(filtered());
   if (!days.length) { toast('Nothing to export in this range', 'bad'); return; }
-  const head = ['Date','Employee','EmployeeID','Department','CheckIn','CheckOut','Hours','Late','Status','Method','Punches',
+  const head = ['Date','Employee','EmployeeID','Department','CheckIn','CheckOut','Hours','Late','Status','Punches',
                 'InLat','InLon','InAddress','InPhoto','OutLat','OutLon','OutAddress','OutPhoto'];
   const g = (r, f) => r && r[f] != null ? r[f] : '';
   const rows = days.map(d => [
     d.date, d.name, d.empId, d.dept,
     d.firstIn ? hhmmss(d.firstIn) : '', d.lastOut ? hhmmss(d.lastOut) : '',
     d.hours != null ? d.hours.toFixed(2) : '', d.late ? 'YES' : 'NO',
-    d.status, d.method, d.punches,
+    d.status, d.punches,
     g(d.inRec, 'lat'), g(d.inRec, 'lon'), g(d.inRec, 'place'), d.inRec && d.inRec.hasPhoto ? 'YES' : 'NO',
     g(d.outRec, 'lat'), g(d.outRec, 'lon'), g(d.outRec, 'place'), d.outRec && d.outRec.hasPhoto ? 'YES' : 'NO'
   ]);
@@ -1580,13 +1226,9 @@ function download(blob, filename) {
    SETTINGS
    ===================================================================== */
 function loadSettingsUI() {
-  $('#sThreshold').value = settings.threshold;
-  $('#thrVal').textContent = Number(settings.threshold).toFixed(2);
   $('#sCooldown').value = settings.cooldown;
-  $('#sHold').value = settings.hold;
   $('#sStart').value = settings.startTime;
   $('#sFullDay').value = settings.fullDay;
-  $('#sModelUrl').value = settings.modelUrl || '';
   $('#sPhoto').checked = !!settings.photo;
   $('#sGeo').checked = !!settings.geo;
   $('#sGeocode').checked = !!settings.geocode;
@@ -1640,16 +1282,11 @@ async function prunePhotos() {
   saveRec();
   console.info(`Pruned ${stale.length} photo(s) past the ${settings.photoDays}-day retention window.`);
 }
-$('#sThreshold').addEventListener('input', e => { $('#thrVal').textContent = Number(e.target.value).toFixed(2); });
+
 $('#sSave').addEventListener('click', () => {
-  settings.threshold = parseFloat($('#sThreshold').value);
   settings.cooldown  = Math.max(5, parseInt($('#sCooldown').value, 10) || DEFAULTS.cooldown);
-  settings.hold      = Math.max(0, parseInt($('#sHold').value, 10) || 0);
   settings.startTime = $('#sStart').value || DEFAULTS.startTime;
   settings.fullDay   = parseFloat($('#sFullDay').value) || DEFAULTS.fullDay;
-  const newModelUrl  = $('#sModelUrl').value.trim().replace(/\/+$/, '');
-  if (newModelUrl !== settings.modelUrl) { modelsReady = false; modelsLoading = null; }
-  settings.modelUrl  = newModelUrl;
   saveSet(); loadSettingsUI(); renderDash();
   toast('Settings saved', 'ok');
 });
@@ -1665,7 +1302,7 @@ $('#expJson').addEventListener('click', async () => {
       for (const [k, v] of await Photos.all()) if (wanted.has(k) && v) photos[k] = v;
     } catch (e) { photos = {}; }
   }
-  const payload = { version: 2, exportedAt: new Date().toISOString(), settings, employees, records, photos };
+  const payload = { version: 3, exportedAt: new Date().toISOString(), settings, employees, records, photos };
   download(new Blob([JSON.stringify(payload)], { type: 'application/json' }),
     `faceattend_backup_${dayKey(Date.now())}.json`);
   toast(`Backup exported (${Object.keys(photos).length} photos)`, 'ok');
@@ -1687,7 +1324,7 @@ $('#impFile').addEventListener('change', e => {
       // records from a photo-less backup must not advertise photos they don't have
       if (!nPhotos) records.forEach(r => { r.hasPhoto = false; });
       saveEmp(); saveRec(); saveSet();
-      loadSettingsUI(); renderEmpList(); renderEmpFilter(); renderManualSelect(); renderDash(); renderFeed();
+      loadSettingsUI(); renderEmpList(); renderEmpFilter(); renderKioskEmployeeSelect(); renderDash(); renderFeed();
       toast('Backup imported', 'ok');
     } catch (err) { toast('Import failed: ' + err.message, 'bad'); }
   };
@@ -1702,11 +1339,11 @@ $('#clearPunch').addEventListener('click', async () => {
   toast('Attendance cleared', 'ok');
 });
 $('#clearAll').addEventListener('click', async () => {
-  if (!window.confirm('Delete ALL employees, face templates, attendance records and photos? This cannot be undone.')) return;
+  if (!window.confirm('Delete ALL employees, attendance records and photos? This cannot be undone.')) return;
   employees = []; records = [];
   Store.del(K_EMP); Store.del(K_REC);
   await Photos.clear();
-  renderEmpList(); renderEmpFilter(); renderManualSelect(); renderDash(); renderFeed(); refreshPhotoUsage();
+  renderEmpList(); renderEmpFilter(); renderKioskEmployeeSelect(); renderDash(); renderFeed(); refreshPhotoUsage();
   toast('All data deleted', 'ok');
 });
 
@@ -1714,9 +1351,9 @@ $('#clearAll').addEventListener('click', async () => {
    INIT
    ===================================================================== */
 loadSettingsUI();
-renderSlots();
 renderEmpList();
-renderEmpFilter(); renderManualSelect();
+renderEmpFilter();
+renderKioskEmployeeSelect();
 renderFeed();
 $('#dFrom').value = `${new Date().getFullYear()}-${pad(new Date().getMonth() + 1)}-01`;
 $('#dTo').value = dayKey(Date.now());
@@ -1725,13 +1362,13 @@ prunePhotos().then(() => { renderFeed(); refreshPhotoUsage(); });
 
 window.addEventListener('beforeunload', () => {
   closeCamera(kioskStream, $('#video'));
-  closeCamera(enrollStream, $('#evideo'));
 });
 
 /* expose pure logic for testing */
-window.__fa = { buildDays, euclid, toMin, csvCell, dayKey, stampPhotoImpl, wrapText, punch, Photos, Geo,
+window.__fa = { buildDays, toMin, csvCell, dayKey, stampPhotoImpl, wrapText, punch, Photos, Geo,
                 get records(){return records}, set records(v){records=v},
                 get settings(){return settings}, set settings(v){settings=v} };
 </script>
 </body>
 </html>
+
