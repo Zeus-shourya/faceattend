@@ -1,9 +1,45 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-IN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FaceAttend — Employee Attendance</title>
+<title>Employee Attendance App with GPS Photo Stamp | FaceAttend</title>
+<meta name="description" content="Browser-based employee attendance kiosk: check staff in and out, add date, time and GPS-stamped punch photos, and export CSV. Records stay in your browser.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#131a25">
+<link rel="canonical" href="https://zeus-shourya.github.io/faceattend/attendance.html">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_IN">
+<meta property="og:site_name" content="FaceAttend">
+<meta property="og:title" content="FaceAttend — Employee Attendance Kiosk with GPS Photo Stamp">
+<meta property="og:description" content="Check staff in and out from a browser, with the date, time and GPS location stamped on each punch photo. Records stay on the device.">
+<meta property="og:url" content="https://zeus-shourya.github.io/faceattend/attendance.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="FaceAttend — Employee Attendance Kiosk with GPS Photo Stamp">
+<meta name="twitter:description" content="Check staff in and out from a browser, with the date, time and GPS location stamped on each punch photo. Records stay on the device.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "@id": "https://zeus-shourya.github.io/faceattend/attendance.html#app",
+  "name": "FaceAttend",
+  "url": "https://zeus-shourya.github.io/faceattend/attendance.html",
+  "description": "Browser-based employee attendance kiosk: check staff in and out, add date, time and GPS-stamped punch photos, and export CSV. Records stay in your browser.",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Employee attendance",
+  "operatingSystem": "Any (web browser)",
+  "browserRequirements": "Requires JavaScript. Camera and location access are optional.",
+  "inLanguage": "en-IN",
+  "featureList": [
+    "Manual check-in and check-out kiosk",
+    "Stamped photo proof with date, time, GPS coordinates and site label",
+    "Optional street address lookup from coordinates (OpenStreetMap)",
+    "Dashboard with daily hours, late and absent counts",
+    "CSV export and JSON backup",
+    "Data stored locally in the browser"
+  ]
+}
+</script>
 <style>
   :root{
     --bg:#0b0f16; --panel:#131a25; --panel2:#182131; --line:#243044;
@@ -175,7 +211,7 @@
 <body>
 
 <header>
-  <div class="brand"><div class="logo">◉</div> FaceAttend</div>
+  <h1 class="brand"><span class="logo" aria-hidden="true">◉</span> FaceAttend</h1>
   <nav>
     <button data-view="kiosk" class="active">Kiosk</button>
     <button data-view="enroll">Enroll</button>
